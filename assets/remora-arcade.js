@@ -409,7 +409,8 @@
       else if(v==='pongInput')for(const n of [1,3])out[n-1]=palette[n-1];
       return out;
     }
-    return {start,press,keyDown,keyUp,needsHold,active,leds,fail,nextLevel,actionKey};
+    function pauseInputs(){holdToken++;if(s.game.held)s.game.held={};for(const c of s.game.cues||[])c.holding=false;}
+    return {start,press,keyDown,keyUp,pauseInputs,needsHold,active,leds,fail,nextLevel,actionKey};
   }
   root.RemoraArcade={catalog,create,colors,keyColors:K,keyNames,directionBase:[2,3,5,1]};
 })(typeof window==='undefined'?globalThis:window);

@@ -561,7 +561,7 @@
         }else if(phase==='cutoff'){
           powerPolicy.off();stopTimers();stopAnimation();state.power='off';state.view='off';render();
         }else if(['lowNotice','chargeNotice','usbNotice','batteryPeek'].includes(phase)){
-          if(before==='play'&&!suspendedView){suspendedView=state.view;state.suspendedAt=performance.now();pauseTimers();save();}
+          if(before==='play'&&!suspendedView){suspendedView=state.view;state.suspendedAt=performance.now();arcade.pauseInputs();pauseTimers();save();}
           cancelExitHold();stopAnimation();state.power='on';state.view='powerNotice';state.noticeKind=phase;render();
         }
       }

@@ -21,3 +21,6 @@ reloaded.show({view:'display',displaySelection:1});reloaded.press(3);assert.equa
 const fallback=launch(app.store);assert.equal(fallback.state().spiMHz,10);assert.equal(fallback.state().spiTrial,false);
 fallback.boot();fallback.show({view:'display',displaySelection:1});fallback.press(3);fallback.advance(15020);assert.equal(fallback.state().spiMHz,10);
 console.log('Profiles: five slots, name tutorial, first-login restart, no overwrite, switching, delete, reload and SPI rollback OK');
+
+// Suspending releases held movement, while wake keys do not become gameplay input.
+const paused=launch();paused.boot();paused.test.arcade.start('pong');paused.down(3);paused.advance(80);paused.setBattery(5);paused.up(3);paused.advance(2020);paused.setBattery(10);paused.down(1);paused.down(3);paused.advance(2020);paused.up(1);paused.up(3);const x=paused.state().game.playerX;paused.advance(80);assert.equal(paused.state().game.playerX,x);
