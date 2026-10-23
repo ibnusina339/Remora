@@ -40,6 +40,7 @@ class GameEngine {
  void missing();void missingPlayback(bool);void missingPress(int);void decoder();void decoderPress(int);
  void snake();void snakeFood();void snakePress(int);void snakeTick();void pong();void pongBall();void pongBounce(bool);void pongPress(int);void pongTick();
 public:
+ std::array<uint32_t,GameCount>winCounts{};
  GameState s;std::function<void(const char*)>sound;std::function<void(int,int,bool)>record;
  void start(int mode,int difficulty,uint32_t seed=37);void nextLevel();void advance(int milliseconds);void press(int);bool keyDown(int);void keyUp(int);
  std::array<uint32_t,6> leds()const;

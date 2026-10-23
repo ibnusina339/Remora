@@ -117,7 +117,7 @@ Strip sumber, potongan, generator, dan pratinjau animasi lama disimpan sebagai a
 
 ## TODO mekanik game tambahan
 
-Beat Catch, Fake Signal, Pattern Hunt, Bomb Defuse, dan Sound Hunt tetap dalam backlog. Light Maze, Hot Potato, Direction Shift, Signal Decoder, Missing Key, dan tambahan Whack-a-Light sudah dapat dimainkan di simulator. Port mekanik, aset sapi, input hold/double tap, dan feedback ke firmware LVGL masih diperlukan.
+Beat Catch, Fake Signal, Pattern Hunt, Bomb Defuse, dan Sound Hunt tetap dalam backlog. Light Maze, Hot Potato, Direction Shift, Signal Decoder, Missing Key, dan tambahan Whack-a-Light sudah dapat dimainkan di simulator. Port native tersedia di target ESP32-C6; pengujian board fisik tetap diperlukan.
 
 ## Pemeriksaan simulasi
 

@@ -7,3 +7,6 @@
 - SPI trial: 10 MHz default, 16/20/26/40 MHz experimental, confirmation timeout, reboot/error recovery.
 - No game balancing changes; existing browser rules remain the reference.
 - Physical board and GPIO23 pad must still be verified; no claim of hardware validation.
+
+- Five local profiles; First Login creates a new player, requires a free slot, persists a three-second shutdown state, and greets the selected name in a typewriter tutorial with the neutral sitting cat.
+- Cloud cancelled by user; NVS userdata persists separately from OTA application slots.

@@ -539,7 +539,7 @@
         frame(8,108,304,96,P.amber,2);rect(10,110,300,92,P.panel);rect(15,98,54,15,P.panel);frame(15,98,54,15,P.amber);text('MEOW',24,102,1,P.paper);
         const cat=root.RemoraCatSprites.sit;catSprite('sit',40,184,false,48/cat.w);
         const rows=[];let row='';for(const word of message.slice(0,shown).split(' ')){if((row+' '+word).trim().length>19){rows.push(row);row=word;}else row=(row+' '+word).trim();}rows.push(row);
-        rows.slice(0,4).forEach((v,i)=>text(v,77,121+i*18,2,P.paper));footer([null,s.tutorialStep===1?'INFO':null,s.tutorialStep===3?'HARDER':null,null,null,'NEXT']);
+        rows.slice(0,4).forEach((v,i)=>text(v,77,121+i*18,2,P.paper));footer([s.tutorialStep===2&&s.guidePage?'PREV':null,s.tutorialStep===1?'INFO':null,s.tutorialStep===3?'HARDER':s.tutorialStep===2&&s.guidePage+1<s.guidePages?'NEXT':null,null,null,shown<message.length?'TEXT':[1,3].includes(s.tutorialStep)?null:'NEXT']);
       }
       if(s.exitHolding&&(s.animationTime||0)-s.exitHoldStarted>=900){
         const progress=Math.min(1,((s.animationTime||0)-s.exitHoldStarted)/2000);
