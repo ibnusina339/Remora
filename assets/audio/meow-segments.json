@@ -1,0 +1,41 @@
+{
+  "source": "https://www.youtube.com/watch?v=_SNIchho6kM",
+  "segments": [
+    {
+      "id": "meow-01",
+      "sampleRate": 22050,
+      "sourceStart": 4.02,
+      "sourceEnd": 5.09
+    },
+    {
+      "id": "meow-02",
+      "sampleRate": 22050,
+      "sourceStart": 6.3,
+      "sourceEnd": 7.3
+    },
+    {
+      "id": "meow-03",
+      "sampleRate": 22050,
+      "sourceStart": 8.17,
+      "sourceEnd": 8.99
+    },
+    {
+      "id": "meow-04",
+      "sampleRate": 22050,
+      "sourceStart": 10.56,
+      "sourceEnd": 11.57
+    },
+    {
+      "id": "meow-05",
+      "sampleRate": 22050,
+      "sourceStart": 12.35,
+      "sourceEnd": 13.12
+    },
+    {
+      "id": "meow-06",
+      "sampleRate": 22050,
+      "sourceStart": 13.37,
+      "sourceEnd": 14.45
+    }
+  ]
+}

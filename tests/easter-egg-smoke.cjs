@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {launch}=require('./pixel-harness.cjs');
+const fresh=()=>{const app=launch();app.boot();return app;};
+const app=fresh();app.press(3);const selected=app.state().modeSelection;
+for(let i=0;i<4;i++)app.press(5);assert.equal(app.state().view,'home');app.press(5);assert.equal(app.state().view,'secretCat');
+assert.equal(app.keys[3].attrs['data-action'],'BACK');assert.equal(app.keys[5].attrs['data-action'],'MEOW');
+app.press(6);assert.equal(app.state().view,'secretCat');
+for(const [x,y,w,h]of app.drawCalls)assert.ok(x>=0&&y>=0&&x+w<=320&&y+h<=240,'secret screen overflow');
+app.capture(path.resolve(__dirname,'../previews/remora-secret-cat.png'));
+app.press(4);assert.equal(app.state().view,'home');assert.equal(app.state().modeSelection,selected);
+const interrupted=fresh();for(let i=0;i<4;i++)interrupted.press(5);interrupted.press(3);interrupted.press(5);assert.equal(interrupted.state().view,'home');
+const expired=fresh();for(let i=0;i<4;i++)expired.press(5);expired.advance(1600);expired.press(5);assert.equal(expired.state().view,'home');
+const keyboard=fresh();for(let i=0;i<5;i++)keyboard.document.listeners.keydown[0]({key:'s',preventDefault(){}});assert.equal(keyboard.state().view,'secretCat');
+keyboard.document.listeners.keydown[0]({key:'Enter',preventDefault(){}});assert.equal(keyboard.state().view,'secretCat');keyboard.document.listeners.keydown[0]({key:'Escape',preventDefault(){}});assert.equal(keyboard.state().view,'home');
+const playing=fresh();playing.test.arcade.start('maze');for(let i=0;i<5;i++)playing.press(5);assert.notEqual(playing.state().view,'secretCat');
+app.press(6);assert.equal(app.state().view,'pregame');
+console.log('Easter egg: hidden menu gesture, keyboard, meow, back, timeout and gameplay isolation OK');

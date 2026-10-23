@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const box={window:{}};vm.createContext(box);vm.runInContext(fs.readFileSync('assets/remora-power-policy.js','utf8'),box);
+const create=()=>box.window.RemoraPowerPolicy.create();
+let p=create(),input={usb:false,percent:50,keys:0};assert.equal(p.begin(0,input),'standby');
+input.keys=1;p.update(1,input);assert.equal(p.update(3000,input),'standby');
+input.keys=5;p.update(3100,input);assert.equal(p.update(5099,input),'standby');assert.equal(p.update(5100,input),'play');
+input.usb=true;input.percent=79;assert.equal(p.update(6000,input),'play');input.percent=80;assert.equal(p.update(6001,input),'chargeNotice');assert.equal(p.update(8001,input),'standby');
+input.keys=5;p.update(8100,input);assert.equal(p.update(11000,input),'standby');input.usb=false;input.keys=0;p.update(11001,input);input.keys=5;p.update(11002,input);assert.equal(p.update(13002,input),'play');
+p=create();input={usb:true,percent:60,keys:0};p.begin(0,input);input.keys=1;p.update(10,input);assert.equal(p.update(2010,input),'batteryPeek');assert.equal(p.update(7009,input),'batteryPeek');assert.equal(p.update(7010,input),'standby');assert.equal(p.update(12000,input),'standby');
+p=create();input={usb:false,percent:5,keys:0};assert.equal(p.begin(0,input),'lowNotice');assert.equal(p.update(2000,input),'standby');input.percent=9;input.keys=5;p.update(2001,input);assert.equal(p.update(5000,input),'standby');input.percent=10;p.update(5001,input);assert.equal(p.update(7001,input),'play');
+p=create();input={usb:false,percent:50,keys:7};p.begin(0,input);assert.equal(p.update(5000,input),'standby');
+console.log('Power policy: exact combo, 5/10% hysteresis, 80% USB lock and 2s/5s charging peek OK');

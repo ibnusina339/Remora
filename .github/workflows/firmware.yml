@@ -1,0 +1,56 @@
+name: REMORA build and release
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/arcade-smoke.cjs && node tests/audio-smoke.cjs && node tests/power-policy-smoke.cjs
+      - run: g++ -std=gnu++17 -Wall -Wextra -I firmware/esp32c6/components/remora_core/include firmware/esp32c6/components/remora_core/src/*.cpp firmware/esp32c6/tests/core_test.cpp -o /tmp/remora-core && /tmp/remora-core
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ESP32-C6
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          cd firmware/esp32c6
+          idf.py set-target esp32c6
+          idf.py build
+          cd build
+          python -m esptool --chip esp32c6 merge_bin -o remora-full.bin @flash_args
+      - name: Prepare release files
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          python tools/package-release.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remora-esp32c6
+          path: dist/*
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [core, firmware]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: remora-esp32c6
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

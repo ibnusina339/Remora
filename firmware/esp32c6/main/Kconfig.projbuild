@@ -1,0 +1,21 @@
+menu "REMORA Rev K2"
+config REMORA_LED_PIN
+    int "Six-key SK6812 data GPIO (verify extra pad)"
+    default 23
+    range 0 30
+config REMORA_CRITICAL_MV
+    int "Full-cutoff voltage, millivolts (calibrate on the actual cell)"
+    default 3200
+config REMORA_ADC_SCALE_PERMILLE
+    int "ADC/divider calibration scale, permille"
+    default 1000
+config REMORA_TFT_INVERT
+    bool "Invert ST7789 panel colours"
+    default y
+config REMORA_TFT_MIRROR_X
+    bool "Mirror landscape panel X"
+    default y
+config REMORA_TFT_MIRROR_Y
+    bool "Mirror landscape panel Y"
+    default n
+endmenu

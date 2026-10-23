@@ -1,0 +1,26 @@
+#include "board.hpp"
+#include "esp_wifi.h"
+#include "esp_netif.h"
+#include "esp_event.h"
+#include "esp_http_server.h"
+#include "esp_random.h"
+#include "nvs.h"
+#include <mutex>
+#include <cstring>
+namespace remora {
+static bool initialized=false,started=false;static std::atomic<bool>connected{false},portal{false};static std::string ssid,password;static std::mutex mutex;static httpd_handle_t server;
+static void event(void*,esp_event_base_t base,int32_t id,void*){if(base==IP_EVENT&&id==IP_EVENT_STA_GOT_IP)connected=true;if(base==WIFI_EVENT&&id==WIFI_EVENT_STA_DISCONNECTED)connected=false;}
+void networkInit(){if(initialized)return;ESP_ERROR_CHECK(esp_netif_init());ESP_ERROR_CHECK(esp_event_loop_create_default());esp_netif_create_default_wifi_sta();esp_netif_create_default_wifi_ap();wifi_init_config_t cfg=WIFI_INIT_CONFIG_DEFAULT();ESP_ERROR_CHECK(esp_wifi_init(&cfg));esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,event,nullptr);esp_event_handler_register(IP_EVENT,IP_EVENT_STA_GOT_IP,event,nullptr);initialized=true;}
+void networkConnect(const std::string&name,const std::string&pass){networkInit();networkStop();wifi_config_t cfg{};strncpy((char*)cfg.sta.ssid,name.c_str(),sizeof(cfg.sta.ssid));strncpy((char*)cfg.sta.password,pass.c_str(),sizeof(cfg.sta.password));cfg.sta.threshold.authmode=pass.empty()?WIFI_AUTH_OPEN:WIFI_AUTH_WPA2_PSK;ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA,&cfg));ESP_ERROR_CHECK(esp_wifi_start());started=true;esp_wifi_set_ps(WIFI_PS_MIN_MODEM);ESP_ERROR_CHECK(esp_wifi_connect());{std::lock_guard<std::mutex>l(mutex);ssid=name;}nvs_handle_t n;if(nvs_open("wifi",NVS_READWRITE,&n)==ESP_OK){nvs_set_str(n,"ssid",name.c_str());nvs_set_str(n,"pass",pass.c_str());nvs_commit(n);nvs_close(n);}}
+void networkConnectSaved(){nvs_handle_t n;if(nvs_open("wifi",NVS_READONLY,&n)!=ESP_OK)return;char name[33]{},pass[65]{};size_t a=sizeof(name),b=sizeof(pass);if(nvs_get_str(n,"ssid",name,&a)==ESP_OK){nvs_get_str(n,"pass",pass,&b);nvs_close(n);networkConnect(name,pass);memset(pass,0,sizeof(pass));return;}nvs_close(n);}
+void networkStop(){if(server){httpd_stop(server);server=nullptr;}portal=false;if(initialized&&started){esp_wifi_disconnect();esp_wifi_stop();started=false;}connected=false;}
+bool networkConnected(){return connected;}bool networkPortalActive(){return portal;}
+std::string networkName(){std::lock_guard<std::mutex>l(mutex);return ssid;}
+std::string portalPassword(){std::lock_guard<std::mutex>l(mutex);return password;}
+static std::string decode(const std::string&s){std::string out;for(size_t i=0;i<s.size();i++){if(s[i]=='+')out+=' ';else if(s[i]=='%'&&i+2<s.size()){char h[3]={s[i+1],s[i+2],0};out+=char(strtol(h,nullptr,16));i+=2;}else out+=s[i];}return out;}
+static esp_err_t page(httpd_req_t*r){httpd_resp_set_type(r,"text/html");return httpd_resp_sendstr(r,"<!doctype html><meta name='viewport' content='width=device-width'><title>REMORA Wi-Fi</title><h1>REMORA Wi-Fi</h1><form method='post' action='/connect'><label>SSID <input name='ssid' maxlength='32' required></label><p><label>Password <input name='pass' type='password' minlength='8' maxlength='63'></label><p><button>Connect</button></form>");}
+static std::string pendingName,pendingPass;
+static void connectTask(void*){vTaskDelay(pdMS_TO_TICKS(600));auto n=pendingName,p=pendingPass;pendingPass.clear();networkConnect(n,p);std::fill(p.begin(),p.end(),0);vTaskDelete(nullptr);}
+static esp_err_t connectPost(httpd_req_t*r){if(r->content_len>256||r->content_len<=0)return httpd_resp_send_err(r,HTTPD_400_BAD_REQUEST,"Invalid size");std::string body(r->content_len,'\0');int got=0;while(got<r->content_len){int n=httpd_req_recv(r,body.data()+got,r->content_len-got);if(n<=0)return ESP_FAIL;got+=n;}std::string name,pass;size_t pos=0;while(pos<body.size()){auto end=body.find('&',pos);auto part=body.substr(pos,end==body.npos?end:end-pos);auto eq=part.find('=');if(eq!=part.npos){auto key=part.substr(0,eq),value=decode(part.substr(eq+1));if(key=="ssid")name=value;if(key=="pass")pass=value;}if(end==body.npos)break;pos=end+1;}if(name.empty()||name.size()>32||pass.size()>63||(!pass.empty()&&pass.size()<8))return httpd_resp_send_err(r,HTTPD_400_BAD_REQUEST,"SSID/password invalid");pendingName=name;pendingPass=pass;httpd_resp_sendstr(r,"Saved. REMORA is connecting. Return to the device.");xTaskCreate(connectTask,"wifi-connect",4096,nullptr,4,nullptr);return ESP_OK;}
+void networkPortal(){networkInit();networkStop();char code[13];snprintf(code,sizeof(code),"RM%08lx",(unsigned long)esp_random());{std::lock_guard<std::mutex>l(mutex);password=code;ssid="REMORA-SETUP";}wifi_config_t cfg{};strcpy((char*)cfg.ap.ssid,"REMORA-SETUP");strcpy((char*)cfg.ap.password,code);cfg.ap.ssid_len=12;cfg.ap.channel=1;cfg.ap.max_connection=1;cfg.ap.authmode=WIFI_AUTH_WPA2_PSK;ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP,&cfg));ESP_ERROR_CHECK(esp_wifi_start());started=true;httpd_config_t conf=HTTPD_DEFAULT_CONFIG();conf.max_uri_handlers=2;ESP_ERROR_CHECK(httpd_start(&server,&conf));httpd_uri_t get{};get.uri="/";get.method=HTTP_GET;get.handler=page;httpd_register_uri_handler(server,&get);httpd_uri_t post{};post.uri="/connect";post.method=HTTP_POST;post.handler=connectPost;httpd_register_uri_handler(server,&post);portal=true;}
+}
