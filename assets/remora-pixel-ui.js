@@ -462,6 +462,7 @@
       const v=s.view;
       if(v==='powerNotice'){
         header('REMORA');const low=s.noticeKind==='lowNotice',lock=s.noticeKind==='chargeNotice';
+        if(low){chargeRequired();text('PULIH MINIMAL 10%',160,192,1,P.dim,'center');return;}
         text(low?'BATERAI RENDAH':lock?'CABUT USB':'USB TERHUBUNG',160,42,2,P.amber,'center');
         text(s.batteryPercent+'%',160,100,5,P.paper,'center');
         text(low?'PULIH MINIMAL 10%':lock?'GAME TERKUNCI 80%':'ESTIMASI BATERAI',160,163,2,P.dim,'center');
@@ -483,7 +484,7 @@
       else if(v==='firstLoginConfirm')detail('FIRST LOGIN','PEMAIN BARU','PROFIL LAMA TETAP TERSIMPAN','profile',[null,null,null,'BATAL',null,'YA']);
       else if(v==='slotsFull')detail('SLOT PENUH','5 / 5 PEMAIN','HAPUS SATU PROFIL DAHULU','profile',[null,null,null,'BATAL',null,'PROFILES']);
       else if(v==='firstLoginCountdown')detail('FIRST LOGIN',Math.max(0,3-Math.floor((s.animationTime-s.firstLoginAt)/1000)),'TERSIMPAN / REMORA AKAN MATI','profile',[]);
-      else if(v==='network')list('NETWORK',['SETUP WIFI','LEADERBOARD','SCORE SYNC','OTA UPDATE','WIFI STATUS','FORGET WIFI'],s.networkSelection,['wifi','stats','stats','system','wifi','wifi']);
+      else if(v==='network')list('NETWORK',['SETUP WIFI','OTA UPDATE','WIFI STATUS','FORGET WIFI'],s.networkSelection,['wifi','system','wifi','wifi']);
       else if(v==='system')list('SYSTEM',['DIAGNOSTICS','BUTTON TEST','LED TEST','SPEAKER TEST','DISPLAY TEST'],s.systemSelection,['system','light','light','sound','sun']);
       else if(v==='wifiMethod')list('WIFI SETUP',['TYPE MANUALLY','PHONE SETUP'],s.methodSelection,['edit','wifi']);
       else if(v==='battery')battery();

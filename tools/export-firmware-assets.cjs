@@ -5,7 +5,7 @@ const dest=path.join(root,'firmware/esp32c6/components/remora_core/include');fs.
 const {RemoraFeedback:f,RemoraArcade:a,RemoraPixelUI:u,RemoraCowSprites:cows,RemoraCatSprites:cats,RemoraMeowSamples:meows}=sandbox.window;
 let out='#pragma once\nnamespace remora {\ninline constexpr const char* WinPhrases[11][15]={\n';
 for(const g of a.catalog)out+='{'+Array.from({length:15},(_,i)=>JSON.stringify(f.win(g.mode,i))).join(',')+'},\n';out+='};\ninline constexpr const char* LossTitles[11][5]={\n';
-for(const g of a.catalog)out+='{'+f.tiers[g.mode].map(s=>JSON.stringify(s)).join(',')+'},\n';out+='};\n}\n';fs.writeFileSync(path.join(dest,'game_feedback.hpp'),out);
+for(const g of a.catalog)out+='{'+f.tiers[g.mode].map(s=>JSON.stringify(s)).join(',')+'},\n';out+='};\ninline constexpr const char* LossEndings[23]={'+Array.from({length:23},(_,i)=>JSON.stringify(f.loss('classic',0,0,false,i).line)).join(',')+'};\ninline constexpr uint8_t LossMasks[23]={'+Array.from({length:23},(_,i)=>i<3?31:f.extraEndings[i-3].tiers.reduce((m,n)=>m|(1<<n),0)).join(',')+'};\n}\n';fs.writeFileSync(path.join(dest,'game_feedback.hpp'),out);
 const assetDir=path.join(root,'firmware/esp32c6/components/remora_ui/include');fs.mkdirSync(assetDir,{recursive:true});
 out='#pragma once\n#include <cstdint>\nnamespace remora {\nstruct Sprite {int w,h;const uint8_t*data;};\n';
 const sprites={...Object.fromEntries(Object.entries(cows).map(([k,v])=>['cow_'+k,v])),...Object.fromEntries(Object.entries(cats).map(([k,v])=>['cat_'+k,v]))};

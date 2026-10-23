@@ -311,7 +311,7 @@
       const homeColors = [C.cyan, C.yellow, C.purple, C.green, C.blue, C.white];
       const gameCatalog = window.RemoraArcade.catalog;
       const settingsItems = ['SOUND', 'DISPLAY', 'THEME', 'KEY LIGHT', 'BATTERY', 'PROFILE', 'NETWORK', 'SYSTEM', 'STATS', 'FIRST LOGIN'];
-      const networkItems = ['SETUP WIFI', 'LEADERBOARD', 'SCORE SYNC', 'OTA UPDATE', 'WIFI STATUS', 'FORGET WIFI'];
+      const networkItems = ['SETUP WIFI', 'OTA UPDATE', 'WIFI STATUS', 'FORGET WIFI'];
       const systemItems = ['DIAGNOSTICS', 'BUTTON TEST', 'LED TEST', 'SPEAKER TEST', 'DISPLAY TEST'];
       const ledTestColors = [C.red, C.green, C.blue, C.white];
       const ledTestNames = ['RED', 'GREEN', 'BLUE', 'WHITE'];
@@ -370,7 +370,7 @@
       const profiles=window.RemoraProfiles.create(localStorage,defaults,saved);
       profiles.load(state);
       state.tutorialStep=-1;state.profileSelection=profiles.snapshot().active;
-      let skipTutorialTimer=null,skipConsumed=0;
+      let skipTutorialTimer=null;
       let timers = [];
       let timersPaused=false;
       let powerKeys=0, powerPrevious='off', suspendedView=null, menuRepeat=null;
@@ -554,7 +554,7 @@
         if(phase===powerPrevious)return;
         const before=powerPrevious;powerPrevious=phase;state.powerPhase=phase;
         if(phase==='play'){
-          if(suspendedView){const gap=performance.now()-(state.suspendedAt||performance.now());state.view=suspendedView;suspendedView=null;state.power='on';if(state.speedDeadline)state.speedDeadline+=gap;resumeTimers();startAnimation();render();}
+          if(suspendedView){const gap=performance.now()-(state.suspendedAt||performance.now());state.view=suspendedView;suspendedView=null;state.power='on';if(state.speedDeadline)state.speedDeadline+=gap;if(state.reactionStart)state.reactionStart+=gap;for(const c of state.game.cues||[]){if(c.firstTap)c.firstTap+=gap;if(c.holdStart)c.holdStart+=gap;}resumeTimers();startAnimation();render();}
           else bootUi();
         }else if(phase==='standby'){
           state.power='standby';state.view='standby';stopAnimation();audio.silence();render();
@@ -813,7 +813,7 @@
       function buttonDown(key,onExit) {
         powerKeys|=1<<(key-1);powerTick();
         if(state.power!=='on'||state.view==='powerNotice')return true;
-        if(state.tutorialStep>=0){if((powerKeys&40)===40&&!skipTutorialTimer)skipTutorialTimer=setTimeout(()=>{skipTutorialTimer=null;if(state.tutorialStep>=0&&(powerKeys&40)===40){skipConsumed=40;finishTutorial();}},3000);return true;}
+        if(state.tutorialStep>=0){if((powerKeys&40)===40&&!skipTutorialTimer)skipTutorialTimer=setTimeout(()=>{skipTutorialTimer=null;if(state.tutorialStep>=0&&(powerKeys&40)===40){finishTutorial();}},3000);return true;}
         if(['home','modeSelect'].includes(state.view)&&[1,3].includes(key)){
           if(menuRepeat)clearTimeout(menuRepeat);const repeat=()=>{if((powerKeys&(1<<(key-1)))&&['home','modeSelect'].includes(state.view)){press(key);menuRepeat=setTimeout(repeat,150);}};menuRepeat=setTimeout(repeat,500);
         }
@@ -869,7 +869,6 @@
       function press(key) {
         if (state.power !== 'on' || ['chargeRequired','powerNotice'].includes(state.view) || key < 1 || key > 6) return;
         audio.unlock();
-        if(skipConsumed&(1<<(key-1))){skipConsumed&=~(1<<(key-1));return;}
         if(state.tutorialStep>=0){tutorialPress(key);return;}
         if(['profiles','profileAction','deleteProfile','firstLoginConfirm','slotsFull'].includes(state.view)){profilePress(key);return;}
         if(state.view==='firstLoginCountdown')return;

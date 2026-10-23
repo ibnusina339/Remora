@@ -16,7 +16,7 @@ enum class Phase { Ready,Watch,Input,Clear,Over,ReactionWait,ReactionGo,Reaction
 struct Cue {int key=0,target=0,type=0,taps=0;bool done=false,holding=false;int64_t first=0;};
 struct GameState {
  int mode=0,difficulty=1,level=0,score=0,clears=0,input=0,pulse=0,target=0;
- Phase phase=Phase::Ready;std::string message,reason;
+ Phase phase=Phase::Ready;std::string message,reason,endMessage;int recordAtStart=-1;
  std::array<uint32_t,6> palette{};std::vector<int>sequence;
  int hits=0,required=0,total=0,round=0,index=0,slot=0,group=0,signal=1,dir=1,steps=0,rotation=0,chainIndex=0,purpleDir=1;
  bool mirror=false,fakeUsed=false,green=false,reversed=false,gap=false,invert=false,lsb=false;
@@ -30,7 +30,7 @@ struct GameState {
  int lives=3,tick=0,rally=0,aiReaction=8;std::array<bool,7>held{};
 };
 class GameEngine {
- struct Timer{int64_t at;uint64_t order;std::function<void()>fn;};std::vector<Timer>timers_;uint64_t order_=0;uint32_t random_=37;
+ struct Timer{int64_t at;uint64_t order;std::function<void()>fn;};std::vector<Timer>timers_;uint64_t order_=0;uint32_t random_=37;std::array<int,GameCount>lastEnding_{{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}};
  void later(int,std::function<void()>);void cancel();void deadline(int);void points(int);void clear();void fail(const char*);int rnd(int);int key();float random();
  float pace()const;int stage()const;int extra()const;int burden()const;bool hard()const;std::vector<int>pattern(int,const std::vector<int>& previous={});void shuffle(std::vector<int>&);void refreshPalette();
  void memory();void memoryPress(int);void reaction();void reactionCue();void reactionPress(int);

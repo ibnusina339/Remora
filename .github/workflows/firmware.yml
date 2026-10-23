@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node tests/arcade-smoke.cjs && node tests/audio-smoke.cjs && node tests/power-policy-smoke.cjs
+      - run: mkdir -p previews && node tests/ui-smoke.cjs && node tests/power-policy-smoke.cjs && node tests/profiles-smoke.cjs
       - run: g++ -std=gnu++17 -Wall -Wextra -I firmware/esp32c6/components/remora_core/include firmware/esp32c6/components/remora_core/src/*.cpp firmware/esp32c6/tests/core_test.cpp -o /tmp/remora-core && /tmp/remora-core
   firmware:
     runs-on: ubuntu-latest

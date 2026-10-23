@@ -20,7 +20,7 @@ static void tutorialStep(int step){ui.tutorial=step;ui.tutorialAt=now();ui.tutor
 static void finishTutorial(){ui.tutorial=-1;prefs.tutorialDone=true;prefs.firstLoginPending=false;persist();ui.view=View::Home;ui.game=0;}
 static void home(){ui.view=View::Home;exitAt=ui.exitStarted=-1;repeatKey=0;consumed|=stable;prefs.resumeMode=-1;}
 static void nameEditor(bool fresh){newName=fresh;ui.view=View::Name;ui.entryTitle=fresh?"PEMAIN BARU":"EDIT NAME";ui.entry=fresh?"":prefs.player;ui.charGroup=0;ui.charIndex=0;}
-static void startGame(){networkStop();game.start(ui.game,prefs.difficulty[ui.game],esp_random());ui.view=View::Playing;prefs.games++;prefs.resumeMode=-1;dirty=true;}
+static void startGame(){networkStop();game.start(ui.game,prefs.difficulty[ui.game],esp_random());game.s.recordAtStart=prefs.records[ui.game][prefs.difficulty[ui.game]];ui.view=View::Playing;prefs.games++;prefs.resumeMode=-1;dirty=true;}
 static void boot(){ui.view=View::Boot;ui.animationStart=now();int old=ui.peekGame;ui.peekGame=(old+1+esp_random()%(GameCount-1))%GameCount;ui.peekSide=esp_random()%2;}
 static void clockReset(){prefs.spiMHz=10;prefs.spiPending=false;persist();displayStart(10);uiInvalidate();}
 static void setPhase(PowerPhase phase){auto old=ui.power;if(old==phase)return;ui.power=phase;exitAt=ui.exitStarted=-1;repeatKey=0;if(phase==PowerPhase::Play){peripherals(true);if(displayStart(prefs.spiMHz)!=ESP_OK){prefs.spiMHz=10;prefs.spiPending=false;persist();ESP_ERROR_CHECK(displayStart(10));}uiInvalidate();if(suspended){ui.view=resumeView;suspended=false;game.s.held.fill(false);}else boot();}

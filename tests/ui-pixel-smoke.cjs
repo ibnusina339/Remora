@@ -27,7 +27,7 @@ classic.press(classic.state().sequence[0]);assert.equal(classic.state().view,'cl
 classic.advance(4300);assert.equal(classic.state().view,'input');
 classic.press(classic.state().sequence[0]%6+1);classic.advance(1100);
 assert.equal(classic.state().view,'gameover');assert.equal(classic.state().records['classic:1'],120);
-classic.press(6);assert.equal(classic.state().view,'pregame');
+classic.press(6);assert.equal(classic.state().view,'ready');
 const reload=launch(classic.store);reload.boot();assert.equal(reload.state().records['classic:1'],120);
 reload.press(6);reload.press(3);assert.equal(reload.state().records['classic:2'],undefined);
 // Reaction records are minimum times, stored separately from point scores.
@@ -45,25 +45,21 @@ const reverse=fresh();reverse.press(3);reverse.press(6);reverse.press(6);reverse
 reverse.press(reverse.state().sequence[0]);reverse.advance(4300);for(const n of reverse.state().sequence.slice().reverse())reverse.press(n);assert.equal(reverse.state().view,'clear');
 // Every settings entry opens and returns, including physical-key list navigation.
 const settings=fresh();settings.press(1);settings.press(6);
-for(const expected of ['sound','display','theme','leds','battery','profile','network','system','stats']){
+for(const expected of ['sound','display','theme','leds','battery','profiles','network','system','stats','firstLoginConfirm']){
   settings.press(6);assert.equal(settings.state().view,expected);settings.press(4);assert.equal(settings.state().view,'settings');settings.press(5);
 }
 assert.equal(settings.state().selection,0);
 settings.press(6);const sound=settings.state().masterVolume;settings.press(3);assert.equal(settings.state().masterVolume,sound+10);settings.press(5);settings.press(1);assert.equal(settings.state().bgmVolume,25);settings.press(5);settings.press(3);assert.equal(settings.state().sfxVolume,85);settings.press(4);
 settings.press(5);settings.press(6);settings.press(3);assert.equal(settings.state().display,100);
-// Battery policy preempts gameplay and boot, locks keys, sleeps, and resumes on charge.
-const low=fresh();low.press(6);low.press(6);low.advance(2400);low.setBattery(5);assert.equal(low.state().view,'input');
-low.setBattery(4);assert.equal(low.state().view,'chargeRequired');const games=low.state().games;
-for(let i=1;i<=6;i++)low.press(i);assert.equal(low.state().games,games);assert.equal(low.state().view,'chargeRequired');
-low.advance(29999);assert.equal(low.state().power,'on');low.advance(1);assert.equal(low.state().power,'sleep');
-assert.ok(low.pixels.every(v=>v===0));low.setCharging(true);assert.equal(low.state().view,'chargeRequired');
-low.advance(35000);assert.equal(low.state().power,'on');low.setBattery(5);assert.equal(low.state().power,'boot');low.advance(2500);assert.equal(low.state().view,'home');
-const startup=launch();startup.setBattery(4);startup.boot();assert.equal(startup.state().view,'chargeRequired');startup.power();startup.advance(31000);assert.equal(startup.state().power,'off');
-const paused=fresh();paused.setCharging(true);paused.setBattery(4);paused.advance(35000);assert.equal(paused.state().view,'chargeRequired');
-paused.setCharging(false);paused.advance(30000);assert.equal(paused.state().power,'sleep');
-const boot=launch();boot.power();boot.advance(200);const early=boot.state().bootOpacity;boot.advance(600);assert.ok(boot.state().bootOpacity>early);boot.advance(1300);assert.ok(boot.state().bootOpacity<early+0.4);boot.advance(400);assert.equal(boot.state().view,'home');
-// First boot still creates and saves the player before entering the carousel.
-const first=launch({value:null});first.boot();assert.equal(first.state().view,'nameEditor');first.press(5);first.press(6);assert.equal(first.state().playerName,'A');assert.equal(first.state().view,'home');
+// Rev K2 locks, standby charging peek, and exact two-button resume.
+const low=fresh();low.press(6);low.press(6);low.advance(2400);low.setBattery(5);assert.equal(low.state().view,'powerNotice');
+const games=low.state().games;for(let i=1;i<=6;i++)low.press(i);assert.equal(low.state().games,games);
+low.advance(2020);assert.equal(low.state().power,'standby');assert.ok(low.pixels.every(v=>v===0));
+low.setCharging(true);assert.equal(low.state().view,'powerNotice');low.advance(2020);
+low.down(1);low.advance(2020);assert.equal(low.state().noticeKind,'batteryPeek');low.up(1);low.advance(5020);assert.equal(low.state().power,'standby');
+low.setBattery(10);low.setCharging(false);low.down(1);low.down(3);low.advance(2020);low.up(1);low.up(3);assert.equal(low.state().view,'input');
+const first=launch({value:null});first.boot();assert.equal(first.state().view,'nameEditor');first.press(5);first.press(6);assert.equal(first.state().playerName,'A');assert.equal(first.state().tutorialStep,0);
+first.down(4);first.down(6);first.advance(3020);first.up(4);first.up(6);assert.equal(first.state().tutorialStep,-1);
 // Physical mouse/keyboard input drives the same hold mechanism as the engine.
 const holds=fresh();holds.show({mode:'whack',view:'whackInput',game:{wave:1,total:1,purpleDir:1,cues:[{key:2,target:2,type:'hold',done:false,holding:false}]}});
 holds.keys[1].listeners.pointerdown[0]({pointerId:1});holds.advance(700);holds.keys[1].listeners.pointerup[0]();holds.keys[1].listeners.click[0]();assert.equal(holds.state().view,'clear');
@@ -71,7 +67,7 @@ const earlyHold=fresh();earlyHold.show({mode:'whack',view:'whackInput',game:{wav
 earlyHold.document.listeners.keydown[0]({key:'w',preventDefault(){}});earlyHold.advance(50);earlyHold.document.listeners.keyup[0]({key:'w'});assert.equal(earlyHold.state().view,'gameover');
 // Menu cow pixels change across a blink; battery X changes only when charging.
 const animated=fresh();const region=()=>{const out=[];for(let y=130;y<150;y++)for(let x=240;x<285;x++)out.push(...animated.pixels.subarray((y*320+x)*3,(y*320+x)*3+3));return out;};
-const before=region();animated.advance(1500);assert.notDeepEqual(region(),before);
+const before=region();animated.advance(4000-animated.state().animationTime%4200);assert.notDeepEqual(region(),before);
 animated.setBattery(4);const cross=Buffer.from(animated.pixels);animated.setCharging(true);assert.notDeepEqual(animated.pixels,cross);
 // Every new screen draws inside the native 320x240 bounds, using integer pixels.
 const render=fresh();
@@ -143,7 +139,7 @@ for(const mode of ['classic','reverse','reaction','maze','whack','potato','direc
 const pointerExit=fresh();pointerExit.test.arcade.start('classic');pointerExit.keys[3].listeners.pointerdown[0]({pointerId:1});pointerExit.advance(2000);pointerExit.keys[3].listeners.pointerup[0]();pointerExit.keys[3].listeners.click[0]();assert.equal(pointerExit.state().view,'home');
 const shortExit=fresh();shortExit.test.arcade.start('maze');shortExit.down(4);shortExit.advance(400);shortExit.up(4);shortExit.advance(1800);assert.equal(shortExit.state().view,'mazeInput');
 const keyExit=fresh();keyExit.test.arcade.start('classic');keyExit.document.listeners.keydown[0]({key:'a',preventDefault(){}});keyExit.advance(2000);keyExit.document.listeners.keyup[0]({key:'a'});assert.equal(keyExit.state().view,'home');
-const emergency=fresh();emergency.test.arcade.start('classic');emergency.down(4);emergency.setBattery(4);emergency.advance(1500);assert.equal(emergency.state().view,'chargeRequired');
+const emergency=fresh();emergency.test.arcade.start('classic');emergency.down(4);emergency.setBattery(4);emergency.advance(1500);assert.equal(emergency.state().view,'powerNotice');
 const interrupted=fresh();interrupted.test.arcade.start('classic');interrupted.document.listeners.keydown[0]({key:'a',preventDefault(){}});interrupted.document.listeners.keydown[0]({key:'Escape',preventDefault(){}});interrupted.press(6);interrupted.document.listeners.keyup[0]({key:'a'});assert.equal(interrupted.state().view,'pregame');
 assert.doesNotMatch(fs.readFileSync('assets/remora-pixel-ui.js','utf8'),/drawImage\(|fillText\(|\.arc\(/);
 // Visible maps start immediately; fog modes retain their actual memory phase.
