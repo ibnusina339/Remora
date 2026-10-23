@@ -88,17 +88,17 @@
     }
     function centeredSprite(name,cx,bottom,k=1){const a=root.RemoraCowSprites[name];sprite(name,Math.round(cx-a.w*k/2),bottom-a.h*k,k);}
     const catRuns=new Map();
-    function catSprite(name,cx,bottom,mirror=false){
+    function catSprite(name,cx,bottom,mirror=false,scale=1){
       const a=root.RemoraCatSprites?.[name];if(!a)return;
       if(!catRuns.has(name)){
         const runs=[];
         a.rows.forEach((row,y)=>{let start=0;for(let x=1;x<=a.w;x++)if(row[x]!==row[start]){if(row[start]!=='.')runs.push([start,y,x-start,row[start]]);start=x;}});
         catRuns.set(name,runs);
       }
-      const left=Math.round(cx-a.w/2),top=bottom-a.h;
+      const left=Math.round(cx-a.w*scale/2),top=bottom-a.h*scale;
       for(const [x,y,w,c]of catRuns.get(name)){
-        const start=left+(mirror?a.w-x-w:x),l=Math.max(0,start),r=Math.min(320,start+w);
-        if(r>l)rect(l,top+y,r-l,1,c==='#'?P.black:c==='g'?'#999999':'#ffffff');
+        const start=left+Math.round((mirror?a.w-x-w:x)*scale),l=Math.max(0,start),r=Math.min(320,start+Math.max(1,Math.round(w*scale)));
+        if(r>l)rect(l,Math.round(top+y*scale),r-l,Math.max(1,Math.round(scale)),c==='#'?P.black:c==='g'?'#999999':'#ffffff');
       }
     }
     function cow(x,y,k=2,mood='calm',body=true,accessory=0){
@@ -476,7 +476,13 @@
       else if(v==='home'||v==='modeSelect')carousel();
       else if(v==='pregame')pregame();
       else if(v==='gameInfo')info();
-      else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILE','NETWORK','SYSTEM','STATS'],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
+      else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILES','NETWORK','SYSTEM','STATS','FIRST LOGIN'],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
+      else if(v==='profiles')list('PROFILES / 5 SLOTS',s.profiles.map((p,i)=>p?(i===s.activeProfile?'> ':'')+p.playerName:'+ ADD PLAYER'),s.profileSelection);
+      else if(v==='profileAction')list('PLAYER',['SWITCH USER','EDIT NAME','DELETE USER'],s.profileAction);
+      else if(v==='deleteProfile')detail('HAPUS PEMAIN?',s.profiles[s.profileTarget]?.playerName||'','REKOR PEMAIN INI AKAN DIHAPUS','profile',[null,null,null,'BATAL',null,'HAPUS']);
+      else if(v==='firstLoginConfirm')detail('FIRST LOGIN','PEMAIN BARU','PROFIL LAMA TETAP TERSIMPAN','profile',[null,null,null,'BATAL',null,'YA']);
+      else if(v==='slotsFull')detail('SLOT PENUH','5 / 5 PEMAIN','HAPUS SATU PROFIL DAHULU','profile',[null,null,null,'BATAL',null,'PROFILES']);
+      else if(v==='firstLoginCountdown')detail('FIRST LOGIN',Math.max(0,3-Math.floor((s.animationTime-s.firstLoginAt)/1000)),'TERSIMPAN / REMORA AKAN MATI','profile',[]);
       else if(v==='network')list('NETWORK',['SETUP WIFI','LEADERBOARD','SCORE SYNC','OTA UPDATE','WIFI STATUS','FORGET WIFI'],s.networkSelection,['wifi','stats','stats','system','wifi','wifi']);
       else if(v==='system')list('SYSTEM',['DIAGNOSTICS','BUTTON TEST','LED TEST','SPEAKER TEST','DISPLAY TEST'],s.systemSelection,['system','light','light','sound','sun']);
       else if(v==='wifiMethod')list('WIFI SETUP',['TYPE MANUALLY','PHONE SETUP'],s.methodSelection,['edit','wifi']);
@@ -527,6 +533,13 @@
         const busy=v==='wifiConnecting'||(v==='wifiResult'&&!s.networkError);
         detail(a,b,c,'wifi',busy?[]:[null,null,v==='wifiResult'&&s.networkError?'EDIT':null,v==='wifiConfirm'?'EDIT':'BACK',null,d]);
       }else gameplay();
+      if(s.tutorialStep>=0){
+        const message=root.RemoraTutorial.message(s.tutorialStep,s.playerName),shown=s.tutorialReveal?message.length:Math.max(0,Math.floor((s.animationTime-s.tutorialStartedAt)/30));
+        frame(8,108,304,96,P.amber,2);rect(10,110,300,92,P.panel);rect(15,98,54,15,P.panel);frame(15,98,54,15,P.amber);text('MEOW',24,102,1,P.paper);
+        const cat=root.RemoraCatSprites.sit;catSprite('sit',40,184,false,48/cat.w);
+        const rows=[];let row='';for(const word of message.slice(0,shown).split(' ')){if((row+' '+word).trim().length>19){rows.push(row);row=word;}else row=(row+' '+word).trim();}rows.push(row);
+        rows.slice(0,4).forEach((v,i)=>text(v,77,121+i*18,2,P.paper));footer([null,s.tutorialStep===1?'INFO':null,s.tutorialStep===3?'HARDER':null,null,null,'NEXT']);
+      }
       if(s.exitHolding&&(s.animationTime||0)-s.exitHoldStarted>=900){
         const progress=Math.min(1,((s.animationTime||0)-s.exitHoldStarted)/2000);
         rect(34,91,252,50,P.panel);frame(34,91,252,50,P.red,2);text('TAHAN KIRI BAWAH 2S: KELUAR',160,103,1,P.paper,'center');

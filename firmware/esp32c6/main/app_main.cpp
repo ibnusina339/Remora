@@ -58,7 +58,7 @@ static void down(int key){if(ui.power!=PowerPhase::Play||ui.tutorial>=0)return;i
 static void tick(){int64_t t=now();ui.now=t;uint8_t raw=readKeys();if(raw!=rawPrevious){rawPrevious=raw;rawAt=t;}if(t-rawAt>=20&&raw!=stable){auto before=stable;stable=raw;for(int i=0;i<6;i++)if((stable&(1<<i))&&!(before&(1<<i)))down(i+1);for(int i=0;i<6;i++)if(!(stable&(1<<i))&&(before&(1<<i))){game.keyUp(i+1);if(i==3)exitAt=ui.exitStarted=-1;if(repeatKey==i+1)repeatKey=0;if(!(consumed&(1<<i)))press(i+1);consumed&=~(1<<i);}}
  if(t-batteryAt>=1000){auto battery=sampleBattery();if(battery.valid)ui.battery=battery;batteryAt=t;}ui.usb=usbPresent();PowerInput input{ui.usb,ui.battery.valid?ui.battery.percent:0,stable,ui.battery.critical};setPhase(power.update(t,input));
  if(ui.power==PowerPhase::Cutoff){vTaskDelay(pdMS_TO_TICKS(100));return;}if(ui.power==PowerPhase::Standby){standbySleep();return;}
- if(ui.view==View::Boot&&t-ui.animationStart>=2400){if(prefs.firstLoginPending||!prefs.used){int empty=-1;for(int i=0;i<ProfileCount;i++)if(!prefs.profiles[i].used){empty=i;break;}if(empty>=0){addProfile(prefs,empty);nameEditor(true);}else{ui.view=View::SlotsFull;ui.selection=prefs.active;}}else{ui.view=View::Home;if(!prefs.tutorialDone)tutorialStep(0);}}
+ if(ui.view==View::Boot&&t-ui.animationStart>=2400){if(prefs.firstLoginPending||!prefs.used){int empty=-1;for(int i=0;i<ProfileCount;i++)if(!prefs.profiles[i].used){empty=i;break;}if(empty>=0){addProfile(prefs,empty);nameEditor(true);}else{ui.view=View::SlotsFull;ui.selection=prefs.active;}}else if(!prefs.player[0])nameEditor(true);else{ui.view=View::Home;if(!prefs.tutorialDone)tutorialStep(0);}}
  if(ui.view==View::FirstCountdown&&t-ui.animationStart>=3000){suspended=false;power.standby();setPhase(PowerPhase::Standby);return;}
  if(ui.view==View::Shutdown&&t-ui.animationStart>=2500){suspended=false;power.standby();setPhase(PowerPhase::Standby);return;}
  if(ui.tutorial>=0&&stable==40){if(skipAt<0)skipAt=t;if(t-skipAt>=3000){finishTutorial();consumed|=40;}}else skipAt=-1;
@@ -75,6 +75,7 @@ static void tick(){int64_t t=now();ui.now=t;uint8_t raw=readKeys();if(raw!=rawPr
 }
 }
 extern "C" void app_main(){using namespace remora;earlyInit();auto err=nvs_flash_init();if(err!=ESP_OK){fullCutoff();return;}err=nvs_flash_init_partition("userdata");if(err!=ESP_OK){fullCutoff();return;}load(prefs);displayInitLvgl();uiInit();ui.prefs=&prefs;ui.engine=&game;ui.power=PowerPhase::Off;game.sound=[](const char*s){audioEffect(s);};game.record=[](int mode,int value,bool lower){int &r=prefs.records[mode][game.s.difficulty];if(r<0||(lower?value<r:value>r))r=value;prefs.wins=std::max(prefs.wins,uint32_t(game.s.clears));dirty=true;};ui.battery=sampleBattery();ui.usb=usbPresent();auto phase=power.begin(now(),{ui.usb,ui.battery.valid?ui.battery.percent:0,0,ui.battery.critical});setPhase(phase);
- // Confirm only after NVS, ADC/input setup, LVGL and framebuffer allocations succeed.
+ // Validate the first DMA flush before confirming an OTA image. No visual stability claim.
+ peripherals(true);if(displayStart(10)!=ESP_OK){esp_restart();return;}ui.view=View::Boot;ui.animationStart=now();ui.now=now();uiDraw(ui,true);lv_timer_handler();if(!displayWait()||!ui.battery.valid){esp_restart();return;}peripherals(false);ui.view=View::Notice;
  const esp_partition_t*running=esp_ota_get_running_partition();esp_ota_img_states_t state;if(esp_ota_get_state_partition(running,&state)==ESP_OK&&state==ESP_OTA_IMG_PENDING_VERIFY)esp_ota_mark_app_valid_cancel_rollback();
  while(true){tick();vTaskDelay(pdMS_TO_TICKS(5));}}

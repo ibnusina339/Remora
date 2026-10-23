@@ -72,6 +72,7 @@ void uiDraw(UiModel&model,bool force){m=&model;bg=m->prefs->ocean?0x101c26:0x1c1
    auto lines=wrap(message.substr(0,shown),19);for(size_t i=0;i<std::min(size_t(4),lines.size());i++)text(lines[i],77,121+i*18,2,paper);footer({nullptr,m->tutorial==1?"INFO":nullptr,m->tutorial==3?"HARDER":nullptr,nullptr,nullptr,"NEXT"});
  }
  if(m->exitStarted>=0&&m->now-m->exitStarted>=500){rect(32,88,256,56,panel);frame(32,88,256,56,0xff797d,2);text("TAHAN UNTUK KELUAR",160,101,2,paper,1);frame(44,125,232,8,lineColor);rect(46,127,228*std::min(int64_t(2000),m->now-m->exitStarted)/2000,4,0xff797d);}
+ if(p.brightness<100){int factor=35+p.brightness*65/100;for(int i=0;i<320*240;i++){uint16_t c=fb[i];fb[i]=uint16_t((((c>>11)&31)*factor/100)<<11)|uint16_t((((c>>5)&63)*factor/100)<<5)|uint16_t((c&31)*factor/100);}}
  for(int band=0;band<30;band++){uint32_t h=2166136261;for(int i=band*320*8;i<(band+1)*320*8;i++)h=(h^fb[i])*16777619;if(force||h!=hashes[band]){hashes[band]=h;lv_area_t a={0,band*8,319,band*8+7};lv_obj_invalidate_area(canvas,&a);}}
 }
 }

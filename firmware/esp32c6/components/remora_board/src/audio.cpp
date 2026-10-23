@@ -14,6 +14,6 @@ void audioStop(){if(!running)return;menu=false;duration=0;sample=-1;esp_timer_st
 void audioVolumes(int a,int b,int c){master=a;music=b;effects=c;}
 void audioMenu(bool enabled){menu=enabled;}
 void audioEffect(const char*name){if(!running)return;int hz=!std::strcmp(name,"fail")?160:!std::strcmp(name,"clear")?880:!std::strcmp(name,"back")?330:!std::strcmp(name,"food")?990:!std::strcmp(name,"bounce")?660:520;cue=hz;duration=!std::strcmp(name,"fail")?2000:!std::strcmp(name,"clear")?1800:650;}
-void audioMeow(){if(!running)return;int n=esp_random()%5;if(n>=last&&last>=0)n++;last=n;sample=-1;sampleAt=0;sample=n;}
+void audioMeow(){if(!running)return;int n=esp_random()%(last<0?6:5);if(n>=last&&last>=0)n++;last=n;sample=-1;sampleAt=0;sample=n;}
 void vibrate(int milliseconds){if(milliseconds>0){gpio_set_direction(gpio_num_t(VibrationPin),GPIO_MODE_OUTPUT);gpio_set_level(gpio_num_t(VibrationPin),1);vibUntil=esp_timer_get_time()+milliseconds*1000;}else if(vibUntil&&esp_timer_get_time()>=vibUntil){gpio_set_level(gpio_num_t(VibrationPin),0);vibUntil=0;}}
 }
