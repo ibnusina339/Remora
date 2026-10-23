@@ -398,7 +398,7 @@
       const pixelUI = window.RemoraPixelUI.create(ctx, gameCatalog);
       const audio=window.RemoraAudio.create();
       const arcade = window.RemoraArcade.create({state, now:()=>performance.now(), later, cancel:stopTimers, render, save, say, tone:playTestTone,sfx:name=>audio.effect(name)});
-      state.phraseCounters = saved.phraseCounters && typeof saved.phraseCounters === 'object' ? saved.phraseCounters : {};
+      state.phraseCounters = state.phraseCounters && typeof state.phraseCounters === 'object' ? state.phraseCounters : {};
 
       function save() {
         try {
