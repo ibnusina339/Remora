@@ -17,9 +17,10 @@ struct RatingPlayStats {
   recent+=score;recentMin=std::min(recentMin,score);recentMax=std::max(recentMax,score);
   if(++recentCount<3)return;
   int delta=baseline>recent?baseline-recent:recent-baseline;
-  if(delta>=1800&&((recent>=2*baseline&&recentMin*12>=baseline*5)||(baseline>=2*recent&&recentMax*4<=baseline))){
-   changeAt=games;baseline=recent;
-  }else baseline=(baseline*3+recent)/4;
+  bool large=delta>=1800&&(recent>=2*baseline||baseline>=2*recent);
+  bool consistent=(recent>=2*baseline&&recentMin*12>=baseline*5)||(baseline>=2*recent&&recentMax*4<=baseline);
+  if(large){if(consistent){changeAt=games;baseline=recent;}}
+  else baseline=(baseline*3+recent)/4;
   recent=0;recentCount=0;recentMin=10000000;recentMax=0;
  }
  bool changed()const {return changeAt&&games>=changeAt&&games-changeAt<6;}

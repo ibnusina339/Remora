@@ -29,9 +29,10 @@
    score=Math.min(10000000,Math.max(0,Math.round(score||0)));
    if(lane.baselineCount<3){lane.baseline+=score;lane.baselineCount++;return;}
    lane.recent+=score;lane.recentMin=Math.min(lane.recentMin,score);lane.recentMax=Math.max(lane.recentMax,score);if(++lane.recentCount<3)return;
-   if(Math.abs(lane.baseline-lane.recent)>=1800&&((lane.recent>=lane.baseline*2&&lane.recentMin*12>=lane.baseline*5)||(lane.baseline>=lane.recent*2&&lane.recentMax*4<=lane.baseline))){
-    lane.changeAt=lane.games;lane.baseline=lane.recent;
-   }else lane.baseline=Math.floor((lane.baseline*3+lane.recent)/4);
+   const large=Math.abs(lane.baseline-lane.recent)>=1800&&(lane.recent>=lane.baseline*2||lane.baseline>=lane.recent*2);
+   const consistent=(lane.recent>=lane.baseline*2&&lane.recentMin*12>=lane.baseline*5)||(lane.baseline>=lane.recent*2&&lane.recentMax*4<=lane.baseline);
+   if(large){if(consistent){lane.changeAt=lane.games;lane.baseline=lane.recent;}}
+   else lane.baseline=Math.floor((lane.baseline*3+lane.recent)/4);
    lane.recent=0;lane.recentCount=0;lane.recentMin=10000000;lane.recentMax=0;
   }
   function markAsked(lane,key){
