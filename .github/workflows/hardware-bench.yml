@@ -1,0 +1,38 @@
+name: REMORA COM13 headless bench
+on:
+  push:
+    branches: [codex/hardware-ota-com13]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build headless diagnostic using production core, network and OTA
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          python - <<'PY'
+          from pathlib import Path
+          root=Path('firmware/esp32c6')
+          p=root/'CMakeLists.txt'
+          p.write_text(p.read_text().replace('project(Remora)','set(PROJECT_VER "0.2.0")\nproject(Remora)'))
+          test=(root/'tests/core_test.cpp').read_text().replace('int main(){','static void runCoreTests(){')
+          test=test.replace('for(int tries=0;tries<100000;tries++){','for(int tries=0;tries<100000;tries++){if(tries%128==0)vTaskDelay(1);')
+          (root/'main/core_bench.inc').write_text(test)
+          (root/'main/CMakeLists.txt').write_text('idf_component_register(SRCS "hardware_bench.cpp" INCLUDE_DIRS "." "../tests" REQUIRES remora_board remora_core nvs_flash esp_timer app_update esp_system esp_netif)\n')
+          PY
+          cd firmware/esp32c6
+          idf.py set-target esp32c6
+          idf.py build
+          cd build
+          python -m esptool --chip esp32c6 merge_bin -o remora-bench-full.bin @flash_args
+          mkdir -p ../../../dist/bench
+          cp Remora.bin remora-bench-full.bin bootloader/bootloader.bin partition_table/partition-table.bin ota_data_initial.bin ../../../dist/bench/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remora-headless-bench
+          path: dist/bench/*
