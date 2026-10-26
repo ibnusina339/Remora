@@ -10,8 +10,8 @@
     {name:'HOT POTATO',mode:'potato',pose:'run',guide:['TUNGGU SINYAL DI NODE TARGET.','TEKAN HANYA SAAT WARNA HIJAU.','HARD+: PUTAR BALIK DI TENGAH.','EXPERT+: TARGET MERAH ITU JEBAKAN.']},
     {name:'DIRECTION SHIFT',mode:'direction',pose:'roll',guide:['COCOKKAN PANAH DENGAN KARTU ARAH.','BLOK WARNA MENUNJUKKAN TOMBOL.','IKUTI ROTASI DAN CERMIN POSISI.','HARD+: INGAT MAPPING ARAH.','MASTER: RANGKAIAN PANAH.']},
     {name:'MISSING KEY',mode:'missing',pose:'peek',guide:['INGAT POLA PERTAMA.','PUTARAN KEDUA ADA LAMPU HILANG.','TEBAK SESUAI URUTAN CELAHNYA.','HARD+: 2 CELAH. MASTER: REVERSE.']},
-    {name:'SIGNAL DECODER',mode:'decoder',pose:'listen',guide:['EASY/NORMAL 4 BIT. HARD+ 5-7 BIT.','UBAH BINER MENJADI ANGKA DESIMAL.','ATAS KIRI/KANAN: PINDAH DIGIT.','BAWAH KIRI/KANAN: KURANG/TAMBAH.','TENGAH ATAS HAPUS. BAWAH OK.','EXPERT INVERT. MASTER LSB DULU.']},
-    {name:'SNAKE',mode:'snake',pose:'graze',guide:['GIRING ULAR SAPI MENCARI RUMPUT.','TOMBOL PANAH MENGUBAH ARAH.','HINDARI PAGAR DAN TUBUH SENDIRI.','MAKAN RUMPUT UNTUK NAIK LEVEL.']},
+    {name:'SIGNAL DECODER',mode:'decoder',pose:'listen',guide:['EASY/NORMAL 4 BIT. HARD+ 5-7 BIT.','UBAH BINER MENJADI ANGKA DESIMAL.','ATAS KIRI/KANAN: PINDAH DIGIT.','TENGAH ATAS TAMBAH, BAWAH KURANG.','BAWAH KIRI HAPUS. KANAN OK.','EXPERT INVERT. MASTER LSB DULU.']},
+    {name:'SNAKE',mode:'snake',pose:'graze',guide:['GIRING ULAR SAPI MENCARI RUMPUT.','ATAS TENGAH NAIK, BAWAH TENGAH TURUN.','BAWAH KIRI/KANAN: KIRI/KANAN.','EASY-HARD: TEMBUS SISI LAYAR.','EXPERT/MASTER: DINDING MEMATIKAN.','HINDARI BATU DAN TUBUH SENDIRI.','MAKAN RUMPUT UNTUK NAIK LEVEL.']},
     {name:'PONG',mode:'pong',pose:'expert',guide:['PANTULKAN BOLA SUSU KE LAWAN.','ATAS KIRI/KANAN: GESER PAPAN.','BOLA MAKIN CEPAT SELAMA RALLY.','ARAHKAN PANTULAN DARI TEPI PAPAN.','JANGAN BIARKAN BOLA JATUH.']}
   ];
   const K=['#c49bef','#75d9e8','#ffd76b','#ff797d','#79acfa','#8bdcad'];
@@ -305,10 +305,10 @@
     }
     function decoderPress(n){
       const g=s.game;
-      if(n===4||n===6)g.digits[g.digitIndex]=(g.digits[g.digitIndex]+(n===4?9:1))%10;
+      if(n===2||n===5)g.digits[g.digitIndex]=(g.digits[g.digitIndex]+(n===5?9:1))%10;
       else if(n===1||n===3)g.digitIndex=(g.digitIndex+(n===1?2:1))%3;
-      else if(n===2)g.digits[g.digitIndex]=0;
-      else if(n===5){
+      else if(n===4)g.digits[g.digitIndex]=0;
+      else if(n===6){
         if(Number(g.digits.join(''))!==g.answers[g.index]){fail('KODE TIDAK COCOK');return;}g.index++;g.acceptedAt=now();points(45+g.bitCount*5);sfx('correct');
         if(g.index===g.answers.length){clear();return;}g.digits=[0,0,0];g.digitIndex=2;deadline(g.answerWindow);
       }
@@ -327,11 +327,13 @@
       snakeFood();s.view='snakeInput';draw();host.later(snakeTick,s.game.tickMs);
     }
     function snakePress(n){
-      const g=s.game;if(![1,2,3,5].includes(n)||g.nextDir!==g.dir)return;
+      n=({4:1,2:2,6:3,5:5})[n];const g=s.game;if(!n||g.nextDir!==g.dir)return;
       if(({1:3,3:1,2:5,5:2})[g.dir]!==n)g.nextDir=n;
     }
     function snakeTick(){
-      if(s.view!=='snakeInput')return;const g=s.game,head=g.body[0],dx={1:-1,3:1}[g.nextDir]||0,dy={2:-1,5:1}[g.nextDir]||0,x=head%g.cols+dx,y=Math.floor(head/g.cols)+dy,next=y*g.cols+x,eating=next===g.food;
+      if(s.view!=='snakeInput')return;const g=s.game,head=g.body[0],dx={1:-1,3:1}[g.nextDir]||0,dy={2:-1,5:1}[g.nextDir]||0;let x=head%g.cols+dx,y=Math.floor(head/g.cols)+dy;
+      if(difficulty()<3){x=(x+g.cols)%g.cols;y=(y+g.rows)%g.rows;}
+      const next=y*g.cols+x,eating=next===g.food;
       if(x<0||x>=g.cols||y<0||y>=g.rows||g.rocks.includes(next)||g.body.slice(0,eating?undefined:-1).includes(next)){fail('ULAR SAPI MENABRAK');return;}
       g.dir=g.nextDir;g.body.unshift(next);
       if(eating){g.eaten++;points(35);sfx('food');if(g.eaten>=g.goal){clear();return;}snakeFood();}
@@ -405,7 +407,7 @@
       else if(v==='potatoInput')out[g.signal-1]=g.green?colors.safe:colors.blocked;
       else if(v==='directionPreview'||v==='directionInput')for(const n of baseDirections)out[n-1]=palette[n-1];
       else if(v==='decoderWatch'&&g.bit!=null)out[(g.signalKey||2)-1]=g.bit?colors.bonus:colors.portal;
-      else if(v==='snakeInput')for(const n of [1,2,3,5])out[n-1]=palette[n-1];
+      else if(v==='snakeInput')for(const n of [2,4,5,6])out[n-1]=palette[n-1];
       else if(v==='pongInput')for(const n of [1,3])out[n-1]=palette[n-1];
       return out;
     }

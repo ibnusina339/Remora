@@ -74,7 +74,7 @@ const render=fresh();
 const pages=[...Array.from({length:12},(_,modeSelection)=>({view:'home',modeSelection})),
   ...Array.from({length:5},(_,difficulty)=>({view:'pregame',modeSelection:0,difficulty})),
   ...Array.from({length:9},(_,selection)=>({view:'settings',selection})),
-  ...['chargeRequired','gameInfo','battery','stats','profile','nameEditor','wifiMethod','network','system','diagnostics','displayTest','buttonTest','speakerTest','ledTest','sound','display','leds','theme','phoneSetup','textEntry','wifiNotSet','wifiConfirm','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].map(view=>({view,modeSelection:0}))];
+  ...['chargeRequired','gameInfo','battery','stats','profile','nameEditor','wifiScan','network','system','diagnostics','displayTest','buttonTest','speakerTest','ledTest','sound','display','leds','theme','phoneSetup','textEntry','wifiNotSet','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].map(view=>({view,modeSelection:0}))];
 for(const values of pages){render.show(values);for(const [x,y,w,h]of render.drawCalls)assert.ok(x>=0&&y>=0&&x+w<=320&&y+h<=240,`${values.view}: overflow ${x},${y},${w},${h}`);}
 for(const mode of ['classic','reverse','reaction','maze','whack','potato','direction','missing','decoder','snake','pong']){
   render.show({power:'on',difficulty:4});render.drawCalls.length=0;render.test.arcade.start(mode);render.advance(400);
@@ -99,8 +99,8 @@ render.document.listeners.keydown[0]({key:arrow,preventDefault(){}});assert.equa
 render.test.arcade.start('decoder');render.advance(4300);
 render.document.listeners.keydown[0]({key:'ArrowUp',preventDefault(){}});assert.equal(render.state().game.digits[2],1);
 render.document.listeners.keydown[0]({key:'Backspace',preventDefault(){}});assert.equal(render.state().game.digits[2],0);
-assert.equal(render.keys[4].attrs['data-action'],'OK');assert.match(render.keys[4].attrs['aria-label'],/OK/);
-assert.match(render.el('simulator-hint').textContent,/tengah bawah: OK/);
+assert.equal(render.keys[5].attrs['data-action'],'OK');assert.match(render.keys[5].attrs['aria-label'],/OK/);
+assert.match(render.el('simulator-hint').textContent,/bawah kanan: OK/);
 render.show({view:'pregame',modeSelection:8,difficulty:4});assert.equal(render.keys[2].attrs['data-action'],'');
 render.show({view:'pregame',modeSelection:8,difficulty:0});assert.equal(render.keys[0].attrs['data-action'],'');
 const colourKeys=['#c49bef','#75d9e8','#ffd76b','#ff797d','#79acfa','#8bdcad'];
@@ -123,13 +123,13 @@ render.show({difficulty:1});render.test.arcade.start('direction');render.show({}
 assert.ok(render.drawCalls.some(([x,y,w,h])=>x===207&&y===90&&w===10&&h===14),'old direction card digit position must contain a digit-size block');
 const shuffled=fresh();shuffled.show({difficulty:2});shuffled.test.arcade.start('decoder');shuffled.advance(7000);
 assert.equal(shuffled.state().view,'decoderInput');
-const okKey=5,addKey=6;
+const okKey=6,addKey=2;
 assert.equal(shuffled.keys[okKey-1].attrs['data-action'],'OK');
 shuffled.document.listeners.keydown[0]({key:'ArrowUp',preventDefault(){}});assert.equal(shuffled.state().game.digits[2],1);
 shuffled.press(addKey);assert.equal(shuffled.state().game.digits[2],2);
-assert.equal(shuffled.keys[addKey-1].style.values['--key-color'],shuffled.state().keyPalette[5]);
+assert.equal(shuffled.keys[addKey-1].style.values['--key-color'],shuffled.state().keyPalette[1]);
 const numbered=fresh();numbered.document.listeners.keydown[0]({key:'3',preventDefault(){}});assert.equal(numbered.state().modeSelection,0);
-numbered.document.listeners.keydown[0]({key:'e',preventDefault(){}});assert.equal(numbered.state().modeSelection,1);
+numbered.document.listeners.keydown[0]({key:'e',preventDefault(){}});assert.equal(numbered.state().modeSelection,0);numbered.document.listeners.keyup[0]({key:'e'});assert.equal(numbered.state().modeSelection,1);
 assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/content:\s*attr\(data-key\)/);
 assert.doesNotMatch(fs.readFileSync('assets/remora-pixel-ui.js','utf8'),/text\(i\+1/);
 // Red hold cancels every game timer; a short red hold remains an ordinary input.

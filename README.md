@@ -8,7 +8,8 @@ Target: ESP32-C6FH4 flash 4 MB, TFT ST7789V 320×240, enam SK6812 MINI-E, PAM830
 
 - **Simulator:** buka `index.html`, klik ON, lalu tahan keyswitch kiri atas + kanan atas dua detik. Keyboard **Q + E** juga bisa. Ikuti penamaan dan tutorial pada profil baru.
 - **Perangkat:** unduh binary dari [GitHub Releases](https://github.com/ibnusina339/Remora/releases) dan ikuti [panduan flash](docs/FLASHING.md).
-- **Kontrol:** Q W E / A S D mewakili posisi keyswitch. Warna dan petunjuk pada layar mengikuti fungsi tombol; tidak ada penomoran tombol pada UI.
+- **Kontrol:** Q W E / A S D atau **numpad 4 5 6 / 1 2 3** mewakili posisi keyswitch. Numpad mengikuti posisi fisiknya, termasuk saat Num Lock mati. Warna dan petunjuk pada layar mengikuti fungsi tombol; tidak ada penomoran tombol pada UI.
+- **Matikan:** tahan kiri atas + kanan atas / KEY1 + KEY3 dua detik, lalu hijau untuk matikan atau merah untuk batal. Di numpad: tahan **4 + 6**.
 - **Keluar game:** tahan kiri bawah / KEY4 **dua detik**. Escape tersedia di simulator.
 
 ## Fitur
@@ -23,6 +24,8 @@ Target: ESP32-C6FH4 flash 4 MB, TFT ST7789V 320×240, enam SK6812 MINI-E, PAM830
 - Volume utama, BGM dan SFX 0–100%; enam meow pendek, efek game dan musik menu.
 - SPI 10 MHz default, trial 16/20/26/40 MHz, konfirmasi 15 detik, fallback setelah timeout/error/reset saat trial. FPS hardware diukur pada perangkat.
 - OTA GitHub Releases dengan Semantic Versioning, SHA-256, dua slot aplikasi, boot rollback dan partisi profil terpisah.
+
+Mulai v0.1.1 tersedia tutorial lebih ringkas, kontrol Snake KEY2/5/6/4 dan pilihan SCAN WIFI pada menu Settings → Network. Wi-Fi dipindai setelah memilih Scan, tanpa input nama jaringan manual pada perangkat. Simulator menampilkan contoh jaringan; pemindaian asli berjalan di firmware ESP32. Lihat [catatan v0.1.1](docs/releases/v0.1.1.md).
 
 ## Dokumentasi
 

@@ -3,9 +3,9 @@ const app=launch({value:null});app.boot();app.press(5);app.press(6);
 assert.equal(app.state().playerName,'A');assert.equal(app.state().tutorialStep,0);
 app.advance(3000);app.capture(require('node:path').resolve('previews/remora-tutorial.png'));
 // Exercise actual tutorial controls and per-game preference persistence.
-app.press(6);assert.equal(app.state().tutorialStep,1);app.press(2);assert.equal(app.state().view,'gameInfo');
-app.advance(3000);app.press(6);assert.equal(app.state().view,'pregame');app.press(3);assert.equal(app.state().difficulty,2);
-for(let i=0;i<3;i++){app.advance(3000);app.press(6);}assert.equal(app.state().tutorialStep,-1);
+app.press(6);assert.equal(app.state().tutorialStep,1);app.advance(2500);app.press(6);app.press(2);assert.equal(app.state().view,'gameInfo');
+app.advance(3000);app.press(6);app.press(6);assert.equal(app.state().view,'pregame');app.advance(2500);app.press(6);app.press(3);assert.equal(app.state().difficulty,2);
+for(let i=0;i<3;i++){app.advance(3000);if(app.state().tutorialStep<6)app.press(6);else{assert.equal(app.state().view,'home');assert.equal(app.state().modeSelection,0);}app.press(6);}assert.equal(app.state().tutorialStep,-1);assert.equal(app.state().view,'home');assert.equal(app.state().modeSelection,0);assert.equal(app.state().tutorialDone,true);
 function settings(){app.show({power:'on',view:'settings',mode:null,tutorialStep:-1});}
 function add(name){settings();app.show({selection:9});app.press(6);app.press(6);assert.equal(app.state().view,'firstLoginCountdown');app.advance(3020);assert.equal(app.state().power,'standby');app.down(1);app.down(3);app.advance(2020);app.up(1);app.up(3);app.advance(2500);assert.equal(app.state().view,'nameEditor');app.show({nameChars:[name,...Array(6).fill(null)]});app.press(6);assert.equal(app.state().playerName,name);assert.equal(app.state().tutorialStep,0);app.down(4);app.down(6);app.advance(3020);app.up(4);app.up(6);}
 app.show({records:{'classic:2':1234},masterVolume:20});settings();app.show({selection:5});app.press(6);app.press(4);

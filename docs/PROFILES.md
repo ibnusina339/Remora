@@ -14,7 +14,7 @@ Setiap profil memuat nama, rekor semua game pada lima Difficulty, statistik berm
 
 Profil lama tetap tersimpan. Saat kelima slot terisi, konfirmasi First Login ditolak dan layar meminta menghapus satu profil lewat Settings → Profiles. Menghapus profil memerlukan konfirmasi; hanya data profil pilihan yang dihapus. Menambah dari slot kosong juga membuka penamaan dan tutorial.
 
-Tutorial menggunakan kotak dialog dengan teks muncul bertahap. Pendampingnya kucing duduk biasa **tanpa lidah**. Tekan hijau saat teks belum selesai untuk menampilkan seluruh pesan. Tombol berwarna yang disebutkan pada dialog melanjutkan latihan. Pintasan rahasia: tahan **kiri bawah + kanan bawah / KEY4 + KEY6 selama tiga detik**. Pintasan hanya berlaku saat tutorial.
+Tutorial menggunakan kotak dialog dengan teks muncul bertahap. Pendampingnya kucing duduk biasa **tanpa lidah**. Tekan hijau saat teks belum selesai untuk menampilkan seluruh pesan. Mulai v0.1.1, dialog lebih kecil, teks rata tengah dan tidak memakai label nama pendamping. Setelah teks lengkap, hijau menutup pesan agar layar praktik terlihat penuh. Pesan muncul kembali saat langkah berikutnya; tombol berwarna yang disebutkan melanjutkan latihan. Pintasan rahasia: tahan **kiri bawah + kanan bawah / KEY4 + KEY6 selama tiga detik**. Pintasan hanya berlaku saat tutorial.
 
 Pada firmware, picker nama memakai ungu/kuning untuk kelompok karakter, cyan/biru untuk karakter sebelumnya/berikutnya, merah untuk hapus, hijau untuk tambah. **Tahan hijau untuk menyimpan**. Simulator memakai picker tujuh kotak; hijau menyimpan nama.
 

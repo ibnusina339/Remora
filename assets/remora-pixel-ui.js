@@ -61,6 +61,20 @@
       if(align==='center')x-=Math.floor(width/2);else if(align==='right')x-=width;
       letters.forEach((ch,i)=>{const rows=(F[ch]||F['?']).split('/');rows.forEach((row,yy)=>[...row].forEach((p,xx)=>{if(p==='1')rect(x+xx*scale,y+yy*scale,scale,scale,c);}));x+=(widths[i]+1)*scale;});
     }
+    // Nine-pixel helper text: modestly wider, drawn on whole native pixels.
+    function smallText(str,x,y,c=P.paper,align='left',maxWidth=300,height=9){
+      const letters=[...String(str)],shapes=letters.map(ch=>(F[ch]||F['?']).split('/'));
+      const units=Math.max(0,shapes.reduce((sum,rows)=>sum+rows[0].length+1,0)-1);
+      if(!units)return;
+      const sx=Math.min(1.2*height/9,maxWidth/units),width=Math.round(units*sx);
+      if(align==='center')x-=Math.floor(width/2);else if(align==='right')x-=width;
+      x=Math.round(x);let cursor=0;
+      shapes.forEach(rows=>{rows.forEach((row,yy)=>{const top=Math.round(yy*height/7),bottom=Math.round((yy+1)*height/7);[...row].forEach((p,xx)=>{if(p==='1'){const left=Math.round((cursor+xx)*sx),right=Math.round((cursor+xx+1)*sx);rect(x+left,y+top,right-left,bottom-top,c);}});});cursor+=rows[0].length+1;});
+    }
+    function chargingBolt(x,y){
+      const rows=['....####','...####.','..####..','.####...','#######.','...####.','...###..','..###...','..##....','.##.....','.#......','#.......'];
+      rows.forEach((row,yy)=>[...row].forEach((p,xx)=>{if(p==='#')rect(x+xx,y+yy,1,1,P.amber);}));
+    }
     function star(x,y,c=P.amber,k=1){rect(x+2*k,y, k,5*k,c);rect(x,y+2*k,5*k,k,c);}
     function ring(x,y,r,c=P.amber){let a=r,b=0,err=0;while(a>=b){[[a,b],[b,a],[-b,a],[-a,b],[-a,-b],[-b,-a],[b,-a],[a,-b]].forEach(([u,v])=>rect(x+u,y+v,1,1,c));b++;if(err<=0)err+=2*b+1;if(err>0){a--;err-=2*a+1;}}}
     function arrow(x,y,dir,c=P.amber,k=1){for(let i=0;i<6;i++)rect(x+(dir<0?5-i:i)*k,y+i*k,k,(11-i*2)*k,c);}
@@ -130,15 +144,15 @@
       (patterns[name]||patterns.system).forEach((row,yy)=>[...row].forEach((v,xx)=>{if(v==='1')rect(x+xx*k,y+yy*k,k,k,c);}));
     }
     function header(title='REMORA',extra=''){
-      text(title,10,10,1,P.amber);if(extra)text(extra,160,10,1,P.dim,'center');
+      smallText(title,10,10,P.amber);if(extra)smallText(extra,160,10,P.dim,'center');
       const c=P.amber;
-      text(s.batteryPercent+'%',278,10,1,P.paper,'right');frame(285,8,23,11,c);rect(309,11,2,5,c);
-      rect(288,11,Math.round(17*s.batteryPercent/100),5,c);line(10,25,309,25,P.line);
+      smallText(s.batteryPercent+'%',s.charging?259:273,8,P.paper,'right',45,11);if(s.charging)chargingBolt(267,7);frame(280,6,27,15,c);rect(308,10,3,7,c);
+      rect(283,9,Math.round(21*s.batteryPercent/100),9,c);line(10,25,309,25,P.line);
     }
     function footer(labels,palette=keys){
       nav = labels;
       rect(0,208,320,32,P.bg);line(10,208,309,208,P.line);
-      labels.forEach((label,i)=>{if(!label)return;const x=10+(i%3)*102,y=213+Math.floor(i/3)*14;rect(x,y,11,11,palette[i]);text(label,x+16,y+2,1,palette[i]);});
+      labels.forEach((label,i)=>{if(!label)return;const x=10+(i%3)*102,y=213+Math.floor(i/3)*14;rect(x,y,11,11,palette[i]);smallText(label,x+16,y+2,palette[i],76);});
     }
     function miniCow(x,y,k=1){
       const rows=['.#......#.','.oo####oo.','##oooooo##','.oo#oo#oo.','.oooooooo.','..######..','..oooooo..','..o#oo#o..','..oooooo..','...####...'];
@@ -231,7 +245,7 @@
         rect(16,81,164,105,P.panel);frame(16,81,164,105,P.line,2);const path=[[40,103],[52,103],[64,103],[76,103],[76,115],[76,127],[88,127],[100,127],[112,127],[124,127]];
         path.forEach(([x,y],i)=>snakePatch(x,y,12,i));snakeHead(134,121,2);
         for(const [x,y]of [[151,100],[40,158],[151,165]]){line(x,y+8,x-3,y+3,P.green);line(x,y+8,x,y,P.green);line(x,y+8,x+4,y+2,P.green);}
-        centeredSprite('sit',250,196);
+        centeredSprite('snake',250,196);
       }else if(which===10){
         rect(16,81,164,105,P.panel);
         poly([[39,78],[150,78],[163,90],[163,179],[153,191],[35,191],[25,179],[25,90]],P.line);
@@ -240,11 +254,11 @@
         rect(37,101,115,65,P.bg);frame(37,101,115,65,P.paper,2);
         for(let y=107;y<160;y+=9)rect(94,y,1,4,P.line);
         const bx=[57,75,94,113,134,112][phase],by=[116,124,132,141,148,140][phase],leftY=phase<3?110:139,rightY=phase<3?137:111;
-        rect(44,leftY,5,18,P.paper);rect(44,leftY+5,5,5,P.black);rect(140,rightY,5,18,P.paper);rect(140,rightY+9,5,4,P.black);
+        rect(44,leftY,5,18,P.paper);rect(140,rightY,5,18,P.paper);
         rect(bx-5,by-2,2,2,P.dim);rect(bx,by,5,5,P.paper);rect(bx+2,by+1,1,2,P.black);
         poly([[31,168],[157,168],[166,183],[22,183]],P.amber);line(25,183,163,183,P.paper);
         rect(50,169,3,9,P.black);rect(47,165,9,6,P.paper);rect(50,165,3,3,P.black);ring(120,176,4,P.cyan);ring(137,176,4,P.purple);
-        rect(35,187,118,5,P.line);rect(37,192,12,4,P.black);rect(139,192,12,4,P.black);menuMascot('expert');
+        rect(35,187,118,5,P.line);rect(37,192,12,4,P.black);rect(139,192,12,4,P.black);centeredSprite('pingpong',250,196);
       }else{
         centeredSprite('drink',74,196);rect(15,198,289,3,P.amber);
         rect(160,84,140,104,P.panel);frame(160,84,140,104,P.line,2);
@@ -259,17 +273,17 @@
     function record(){const key=catalog[s.modeSelection]?.mode+':'+s.difficulty;return s.records[key];}
     function pregame(){
       const i=s.modeSelection,r=record(),reaction=catalog[i].mode==='reaction';header('READY TO PLAY',games[i]);
-      text(games[i],14,39,2,P.paper);text('DIFFICULTY',14,68,1,P.dim);
+      text(games[i],14,39,2,P.paper);smallText('DIFFICULTY',14,68,P.dim);
       rect(11,83,182,59,P.panel);frame(11,83,182,59,P.amber,2);arrow(21,102,-1,s.difficulty>0?P.purple:P.line);arrow(173,102,1,s.difficulty<4?P.yellow:P.line);
       text(levels[s.difficulty],103,94,2,P.amber,'center');
       for(let n=0;n<5;n++)rect(66+n*15,120,10,5,n<=s.difficulty?P.amber:P.line);
       centeredSprite(['easy','normal','hard','expert','master'][s.difficulty],251,154);
       const notes={classic:['PELAN DAN SANTAI','TEMPO SEIMBANG','POLA BARU + SPEED','6 LANGKAH + SPEED','8 LANGKAH + SPEED'],reverse:['REVERSE SANTAI','REVERSE NORMAL','POLA BARU + SPEED','REVERSE + CERMIN','CERMIN + SPEED'],reaction:['SATU SINYAL','SATU SINYAL','3 GO + JEBAKAN','5 GO + CERMIN','7 GO + SEBELAH'],maze:['PETA 6 X 4','PETA 7 X 5 + PORTAL','8 X 5 + KABUT','9 X 6 + MEMORI','14 X 9 + DUA BONUS'],whack:['HIJAU / MERAH','LIMA WARNA','2 ISYARAT BERSAMA','2 ISYARAT + KIRI','3 ISYARAT + KIRI'],potato:['PUTARAN SANTAI','GANTI ARAH','BALIK DI TENGAH','TARGET JEBAKAN','JEBAKAN + TURBO'],direction:['WARNA TETAP','ROTASI WARNA','INGAT WARNA','WARNA + CERMIN','RANGKAIAN WARNA'],missing:['SATU CELAH','SATU CELAH','DUA CELAH','TIGA CELAH','3 CELAH + REVERSE'],decoder:['4 BIT / 0-15','4 BIT / 0-15','5 BIT / 0-31','6 BIT + INVERT','7 BIT + INVERT + LSB']};
-      notes.snake=['RUMPUT SANTAI','ULAR NORMAL','PAGAR + BATU','ULAR CEPAT','PADANG EKSTREM'];notes.pong=['LAWAN PREDIKTIF','RALLY CEPAT','PAPAN 40 PIKSEL','PAPAN 34 PIKSEL','SATU NYAWA + TURBO'];
+      notes.snake=['TEMBUS DINDING','TEMBUS DINDING','TEMBUS + BATU','DINDING + CEPAT','DINDING + EKSTREM'];notes.pong=['LAWAN PREDIKTIF','RALLY CEPAT','PAPAN 40 PIKSEL','PAPAN 34 PIKSEL','SATU NYAWA + TURBO'];
       const note=notes[catalog[i].mode][s.difficulty];
-      text(note,103,150,1,P.dim,'center');
-      line(13,167,306,167,P.line);icon('stats',14,179,P.amber,2);text(reaction?'BEST REACTION':'TOP SCORE',39,177,1,P.dim);
-      text(r==null?'--':String(r),300,179,2,P.paper,'right');text(reaction?'MS / LEBIH KECIL LEBIH BAIK':'REKOR PADA DIFFICULTY INI',39,193,1,P.dim);
+      smallText(note,103,150,P.dim,'center',174);
+      line(13,167,306,167,P.line);icon('stats',14,179,P.amber,2);smallText(reaction?'BEST REACTION':'TOP SCORE',39,177,P.dim);
+      text(r==null?'--':String(r),300,179,2,P.paper,'right');smallText(reaction?'MS / LEBIH KECIL LEBIH BAIK':'REKOR PADA DIFFICULTY INI',39,193,P.dim);
       footer([s.difficulty>0?'EASIER':null,null,s.difficulty<4?'HARDER':null,'BACK',null,'START']);
     }
     function info(){
@@ -294,7 +308,7 @@
       footer([null,'UP',null,'BACK','DOWN','SELECT']);
     }
     function detail(title,value,note,symbol='system',labels=['LESS',null,'MORE','BACK',null,'SAVE']){
-      header('SETTINGS',title);icon(symbol,146,43,P.amber,3);text(title,160,81,2,P.dim,'center');text(value,160,116,String(value).length>12?2:3,P.paper,'center');text(note,160,166,1,P.dim,'center');footer(labels);
+      header('SETTINGS',title);icon(symbol,146,43,P.amber,3);text(title,160,81,2,P.dim,'center');text(value,160,116,String(value).length>12?2:3,P.paper,'center');smallText(note,160,166,P.dim,'center');footer(labels);
       if(title==='THEME')catSprite('roll',275,198);
     }
     function battery(){
@@ -303,7 +317,7 @@
       for(let i=0;i<5;i++)rect(27+i*28,76,23,49,s.batteryPercent>i*20?c:P.line);
       centeredSprite('sit',254,152);
       text(s.batteryPercent+'%',98,155,3,c,'center');text(s.batteryVoltage.toFixed(2)+' V',255,167,2,c,'center');
-      text(s.charging?'SEDANG MENGISI DAYA':s.batteryPercent<=15?'ISI DAYA SEGERA':'DAYA SIAP UNTUK BERMAIN',160,190,1,P.dim,'center');footer([null,null,null,'BACK']);
+      smallText(s.charging?'SEDANG MENGISI DAYA':s.batteryPercent<=15?'ISI DAYA SEGERA':'DAYA SIAP UNTUK BERMAIN',160,190,P.dim,'center');footer([null,null,null,'BACK']);
     }
     function chargeRequired(){
       const c=P.amber;
@@ -318,19 +332,19 @@
       for(let i=0;i<6;i++){
         const x=22+i%3*94,y=76+Math.floor(i/3)*48,c=led[i],lit=c&&c!=='transparent';
         frame(x,y,88,40,lit?c:P.line,2);if(lit)rect(x+4,y+4,80,32,c);
-        if(annotations[i])text(annotations[i],x+44,y+29,1,lit?P.black:P.paper,'center');
+        if(annotations[i])smallText(annotations[i],x+44,y+29,lit?P.black:P.paper,'center');
       }
     }
     function gameStatus(note=''){
-      text('LV '+s.level,13,177,1,P.dim);text('SCORE '+s.score,307,177,1,P.paper,'right');
-      if(s.challengeStage)text('TAHAP '+s.challengeStage,153,177,1,P.amber,'center');
+      smallText('LV '+s.level,13,177,P.dim);smallText('SCORE '+s.score,307,177,P.paper,'right');
+      if(s.challengeStage)smallText('TAHAP '+s.challengeStage,153,177,P.amber,'center');
       if(s.speedDeadline&&s.speedWindow){
         const remaining=Math.max(0,s.speedDeadline-(s.animationTime||0)),fraction=Math.min(1,remaining/s.speedWindow),urgent=fraction<.25;
         frame(13,193,294,9,P.line);rect(15,195,Math.round(290*fraction),5,urgent?P.red:P.amber);
-        rect(138,194,44,7,P.bg);text((Math.ceil(remaining/100)/10).toFixed(1)+'s',160,194,1,urgent?P.red:P.paper,'center');
-      }else if(note)text(note,160,195,1,P.dim,'center');
+        rect(138,194,44,9,P.bg);smallText((Math.ceil(remaining/100)/10).toFixed(1)+'s',160,194,urgent?P.red:P.paper,'center');
+      }else if(note)smallText(note,160,195,P.dim,'center');
       const bottom=s.mode==='whack'?((s.effectiveDifficulty??s.difficulty)<2?'YELLOW HOLD / BLUE DOUBLE':''):s.mode==='potato'?(s.game.hits||0)+' / '+(s.game.total||1)+' SAFE CATCHES':s.mode==='decoder'?(s.view==='decoderInput'?'':(s.game.invert?'HIGH=0 LOW=1':'HIGH=1 LOW=0')+(s.game.lsb?' / LSB':' / MSB')):s.mode==='maze'?'':'TAHAN KIRI BAWAH 2S: KELUAR';
-      text(bottom,160,223,1,P.dim,'center');
+      smallText(bottom,160,223,P.dim,'center');
     }
     function feedbackText(message,y){
       const width=str=>[...str].reduce((total,ch)=>total+(F[ch]||F['?']).split('/')[0].length+1,0)*2;
@@ -344,25 +358,25 @@
       if(['gameover','reactionResult','wrong','clear'].includes(v)){
         const good=v==='clear'||v==='reactionResult'&&s.result==='GREAT!';
         text(v==='gameover'?'GAME OVER':v==='clear'?'LEVEL CLEAR':good?'GREAT!':'COBA LAGI',160,41,2,good?P.green:P.amber,'center');
-      if(v==='gameover'){rect(16,60,288,15,P.panel);text(s.failureReason||'',160,64,1,P.amber,'center');}
+      if(v==='gameover'){rect(16,60,288,15,P.panel);smallText(s.failureReason||'',160,64,P.amber,'center');}
         cow(125,79,2,good||s.feedbackTier>=2?'happy':'sleep',false,good?1:s.feedbackTier===4?5:s.feedbackTier===3?3:0);
         text(v==='reactionResult'?s.elapsed+' MS':'SCORE '+s.score,160,142,2,P.amber,'center');
-        feedbackText(s.message||'MOO, COBA LAGI!',170);text(s.endMessage||'',160,197,1,P.dim,'center');
+        feedbackText(s.message||'MOO, COBA LAGI!',170);smallText(s.endMessage||'',160,197,P.dim,'center');
         if(v==='gameover'||v==='reactionResult')footer([null,null,null,'MENU',null,v==='reactionResult'?'NEXT':'RETRY']);return;
       }
       if(['snake','pong'].includes(s.mode)){
         if(s.mode==='snake'){
-          text('RUMPUT '+g.eaten+' / '+g.goal,160,29,1,P.green,'center');frame(28,41,264,132,P.line);
+          smallText('RUMPUT '+g.eaten+' / '+g.goal,160,29,P.green,'center');frame(28,41,264,132,P.line);
           g.rocks.forEach(n=>{const x=30+n%g.cols*10,y=42+Math.floor(n/g.cols)*10;rect(x+1,y+1,8,8,P.dim);rect(x+3,y,3,2,P.paper);});
           g.body.slice(1).forEach((n,i)=>{const x=30+n%g.cols*10,y=42+Math.floor(n/g.cols)*10;snakePatch(x,y,10,i);});
           snakeHead(29+g.body[0]%g.cols*10,41+Math.floor(g.body[0]/g.cols)*10);
           const x=35+g.food%g.cols*10,y=43+Math.floor(g.food/g.cols)*10;line(x,y+7,x-3,y+2,P.green);line(x,y+7,x,y,P.green);line(x,y+7,x+3,y+2,P.green);
-          gameStatus();footer(['LEFT','UP','RIGHT',null,'DOWN'],gameKeys);
+          gameStatus();footer([null,'UP',null,'LEFT','DOWN','RIGHT'],gameKeys);
         }else{
-          text('POIN '+g.hits+'/'+g.goal,17,28,1,P.paper);text('NYAWA '+g.lives,303,28,1,P.paper,'right');frame(16,38,288,132,P.line);
+          smallText('POIN '+g.hits+'/'+g.goal,17,28,P.paper);smallText('NYAWA '+g.lives,303,28,P.paper,'right');frame(16,38,288,132,P.line);
           for(let x=22;x<298;x+=12)rect(x,101,5,1,P.line);
-          rect(g.aiX-(g.aiWidth||48)/2,42,g.aiWidth||48,6,P.paper);rect(g.aiX-15,42,8,6,P.black);rect(g.aiX+10,42,5,6,P.black);
-          rect(g.playerX-g.width/2,153,g.width,7,P.paper);rect(g.playerX-10,153,8,7,P.black);rect(g.playerX+9,153,5,7,P.black);
+          rect(g.aiX-(g.aiWidth||48)/2,42,g.aiWidth||48,6,P.paper);
+          rect(g.playerX-g.width/2,153,g.width,7,P.paper);
           rect(g.ball.x-3,g.ball.y-3,6,6,P.paper);rect(g.ball.x-1,g.ball.y-2,2,2,P.black);miniCow(24,126);
           gameStatus();footer(['LEFT',null,'RIGHT'],gameKeys);
         }
@@ -373,8 +387,8 @@
         cow(23,105,2,go?'hard':'sleep',false,go?4:0);
         if(go||fake)rect(196,103,25,35,gameKeys[s.target-1]);else text('...',208,103,5,P.paper,'center');
         const hint=fake?'JANGAN TEKAN':!go?'TUNGGU GO HIJAU':difficulty===4?'TOMBOL SEBELAH':difficulty===3?'TOMBOL CERMIN':'TEKAN WARNA TARGET';
-        text(hint,207,155,1,P.dim,'center');
-        text((g.hits||0)+' / '+(g.required||1)+' GO',160,166,1,P.paper,'center');gameStatus();return;
+        smallText(hint,207,155,P.dim,'center');
+        smallText((g.hits||0)+' / '+(g.required||1)+' GO',160,166,P.paper,'center');gameStatus();return;
       }
       if(s.mode==='maze'){
         const master=difficulty===4;
@@ -396,10 +410,10 @@
         }
         const px=left+g.current%g.cols*cellW,py=top+Math.floor(g.current/g.cols)*cellH;
         rect(px+3,py+3,cellW-5,cellH-5,P.amber);rect(px+Math.floor(cellW/2)-1,py+Math.floor(cellH/2)-1,3,3,P.black);
-        text(g.cols+' X '+g.rows+' / '+(g.mapVisible?'MAP':'FOG'),160,168,1,P.dim,'center');
+        smallText(g.cols+' X '+g.rows+' / '+(g.mapVisible?'MAP':'FOG'),160,168,P.dim,'center');
         gameStatus(g.bumped?'DINDING! COBA ARAH LAIN':'S START / G GOAL / P PORTAL / * BONUS');
-        if(difficulty>=2)text('BONUS '+g.collectedBonuses.length+'/'+g.bonuses.length+' / MOVES '+g.moves+'/'+g.moveLimit,160,208,1,P.dim,'center');
-        rect(0,220,320,20,P.bg);for(const [i,x,label]of [[0,10,'LEFT'],[1,85,'UP'],[2,157,'RIGHT'],[4,246,'DOWN']]){const c=s.gameLEDs?.[i]&&s.gameLEDs[i]!=='transparent'?s.gameLEDs[i]:gameKeys[i];rect(x,223,10,10,c);text(label,x+14,224,1,c);}
+        if(difficulty>=2)smallText('BONUS '+g.collectedBonuses.length+'/'+g.bonuses.length+' / MOVES '+g.moves+'/'+g.moveLimit,160,208,P.dim,'center');
+        rect(0,220,320,20,P.bg);for(const [i,x,label]of [[0,10,'LEFT'],[1,85,'UP'],[2,157,'RIGHT'],[4,246,'DOWN']]){const c=s.gameLEDs?.[i]&&s.gameLEDs[i]!=='transparent'?s.gameLEDs[i]:gameKeys[i];rect(x,223,10,10,c);smallText(label,x+14,224,c);}
         return;
       }
       if(s.mode==='whack'){
@@ -421,29 +435,29 @@
         else compass(85,117,dir,P.paper,3);
         if(v==='directionPreview'||difficulty<2){
           for(let d=0;d<4;d++){const x=173+d%2*61,y=80+Math.floor(d/2)*40;frame(x,y,52,33,P.line);compass(x+14,y+16,d,P.amber,1);rect(x+34,y+10,10,14,gameKeys[(g.mapping?.[d]||directionBase[d])-1]);}
-        }else text('MEMORY',239,112,1,P.dim,'center');
-        text('STEP '+((g.chainIndex||0)+1)+' / '+(g.chain?.length||1),160,161,1,P.dim,'center');gameStatus();return;
+        }else smallText('MEMORY',239,112,P.dim,'center');
+        smallText('STEP '+((g.chainIndex||0)+1)+' / '+(g.chain?.length||1),160,161,P.dim,'center');gameStatus();return;
       }
       if(s.mode==='missing'){
         text(v==='missingInput'?'APA YANG HILANG?':v==='missingReplay'?'CARI CELAHNYA':'INGAT POLA',160,42,2,P.amber,'center');pads();
-        text(v==='missingInput'?(g.index||0)+' / '+(g.answers?.length||1)+' CELAH':g.gap?'?':(g.slot||0)+1+' / '+s.sequence.length,160,166,1,P.paper,'center');gameStatus();return;
+        smallText(v==='missingInput'?(g.index||0)+' / '+(g.answers?.length||1)+' CELAH':g.gap?'?':(g.slot||0)+1+' / '+s.sequence.length,160,166,P.paper,'center');gameStatus();return;
       }
       if(s.mode==='decoder'){
         text(v==='decoderInput'?'DECODE ANGKANYA':'DENGAR / LIHAT',160,42,2,P.amber,'center');
         if(v==='decoderInput'){
-          nav=['< DIGIT','HAPUS','DIGIT >','- ANGKA','OK','+ ANGKA'];
-          text('DESIMAL 0-'+(2**g.bitCount-1),160,64,1,P.dim,'center');
+          nav=['< DIGIT','+ ANGKA','DIGIT >','HAPUS','- ANGKA','OK'];
+          smallText('DESIMAL 0-'+(2**g.bitCount-1),160,64,P.dim,'center');
           for(let i=0;i<3;i++){const x=91+i*48,selected=i===g.digitIndex;rect(x,80,42,49,selected?P.amber:P.panel);frame(x,80,42,49,selected?P.amber:P.line,2);text(g.digits[i],x+21,87,5,selected?P.black:P.paper,'center');if(selected)poly([[x+17,133],[x+25,133],[x+21,137]],P.amber);}
-          text('JAWAB KODE '+(g.index+1)+' / '+g.answers.length,160,147,1,P.paper,'center');
-          if(g.acceptedAt!=null&&(s.animationTime||0)-g.acceptedAt<900)text('KODE BENAR!',160,163,1,P.green,'center');
+          smallText('JAWAB KODE '+(g.index+1)+' / '+g.answers.length,160,147,P.paper,'center');
+          if(g.acceptedAt!=null&&(s.animationTime||0)-g.acceptedAt<900)smallText('KODE BENAR!',160,163,P.green,'center');
         }else {
           frame(89,74,142,76,g.bit==null?P.line:g.bit?P.yellow:P.blue,2);text(g.bit==null?'...':g.bit?'HIGH':'LOW',160,98,3,g.bit?P.yellow:P.blue,'center');
           const x=Math.floor((320-g.bitCount*24)/2);for(let i=0;i<g.bitCount;i++)rect(x+i*24,158,16,4,i===g.slot?P.paper:P.line);
-          text('KODE '+(g.group+1)+' / '+g.answers.length+' / '+g.bitCount+' BIT',160,64,1,P.dim,'center');
+          smallText('KODE '+(g.group+1)+' / '+g.answers.length+' / '+g.bitCount+' BIT',160,64,P.dim,'center');
         }
         gameStatus();
         if(v==='decoderInput')for(const [i,label]of nav.entries()){
-          const x=14+i%3*103,y=207+Math.floor(i/3)*16;rect(x,y,9,9,gameKeys[i]);text(label,x+14,y+1,1,gameKeys[i]);
+          const x=14+i%3*103,y=207+Math.floor(i/3)*16;rect(x,y,9,9,gameKeys[i]);smallText(label,x+14,y+1,gameKeys[i]);
         }
         return;
       }
@@ -457,20 +471,21 @@
       P.line=ocean?'#415f71':'#68543c';P.dim=ocean?'#9fb9ca':'#b39a78';P.amber=ocean?'#9dd3e8':'#ffbc68';
       ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;rect(0,0,320,240,s.power==='off'||s.power==='sleep'?'#000000':P.bg);
       if(s.power==='off'||s.power==='sleep'||s.power==='standby'){if(s.power==='standby')rect(0,0,320,240,'#000000');return;}
-      if(s.power==='shutdown'){header('REMORA');centeredSprite('sleep',160,155);catSprite('sleep',269,155);text('SAMPAI MOO-LAGI!',160,175,2,P.paper,'center');return;}
+      if(s.power==='shutdown'){header('REMORA');centeredSprite('sleep',160,155);catSprite('sleep',145,94);text('SAMPAI MOO-LAGI!',160,175,2,P.paper,'center');return;}
       if(s.power==='boot')return;
       const v=s.view;
       if(v==='powerNotice'){
         header('REMORA');const low=s.noticeKind==='lowNotice',lock=s.noticeKind==='chargeNotice';
-        if(low){chargeRequired();text('PULIH MINIMAL 10%',160,192,1,P.dim,'center');return;}
+        if(low){chargeRequired();smallText('PULIH MINIMAL 10%',160,192,P.dim,'center');return;}
         text(low?'BATERAI RENDAH':lock?'CABUT USB':'USB TERHUBUNG',160,42,2,P.amber,'center');
         text(s.batteryPercent+'%',160,100,5,P.paper,'center');
         text(low?'PULIH MINIMAL 10%':lock?'GAME TERKUNCI 80%':'ESTIMASI BATERAI',160,163,2,P.dim,'center');
-        text(s.noticeKind==='batteryPeek'?'STANDBY SETELAH 5 DETIK':'KEMBALI STANDBY',160,191,1,P.dim,'center');
+        smallText(s.noticeKind==='batteryPeek'?'STANDBY SETELAH 5 DETIK':'KEMBALI STANDBY',160,191,P.dim,'center');
       }
+      else if(v==='shutdownConfirm')detail('MATIKAN REMORA?','ISTIRAHAT DULU?','HIJAU: MATIKAN / MERAH: BATAL','system',[null,null,null,'BATAL',null,'MATIKAN']);
       else if(v==='chargeRequired')chargeRequired();
       else if(v==='secretCat'){
-        header('REMORA','RAHASIA');text('MEOW... BUKAN MOO!',160,33,1,P.paper,'center');
+        header('REMORA','RAHASIA');smallText('MEOW... BUKAN MOO!',160,33,P.paper,'center');
         catSprite('secretStand',160,196);
         footer([null,null,null,'BACK',null,'MEOW']);
       }
@@ -484,21 +499,27 @@
       else if(v==='firstLoginConfirm')detail('FIRST LOGIN','PEMAIN BARU','PROFIL LAMA TETAP TERSIMPAN','profile',[null,null,null,'BATAL',null,'YA']);
       else if(v==='slotsFull')detail('SLOT PENUH','5 / 5 PEMAIN','HAPUS SATU PROFIL DAHULU','profile',[null,null,null,'BATAL',null,'PROFILES']);
       else if(v==='firstLoginCountdown')detail('FIRST LOGIN',Math.max(0,3-Math.floor((s.animationTime-s.firstLoginAt)/1000)),'TERSIMPAN / REMORA AKAN MATI','profile',[]);
-      else if(v==='network')list('NETWORK',['SETUP WIFI','OTA UPDATE','WIFI STATUS','FORGET WIFI'],s.networkSelection,['wifi','system','wifi','wifi']);
+      else if(v==='wifiScan'){
+        header('WIFI','SIMULASI');
+        if(s.wifiScanBusy){text('MEMINDAI...',160,99,2,P.amber,'center');smallText('SIMULASI PEMINDAIAN JARINGAN',160,140,P.dim,'center');}
+        else if(!s.wifiNetworks.length)smallText('JARINGAN TIDAK DITEMUKAN',160,110,P.dim,'center');
+        else {const first=Math.max(0,s.wifiScanSelection-2);s.wifiNetworks.slice(first,first+4).forEach((net,i)=>{const y=39+i*40,selected=first+i===s.wifiScanSelection,c=selected?P.black:P.paper;rect(11,y,298,36,selected?P.amber:P.panel);text(net.ssid.slice(0,21).toUpperCase(),22,y+5,2,c);smallText((net.secured?'TERKUNCI':'TANPA PASSWORD')+' / '+net.rssi+' DBM',22,y+24,selected?P.black:P.dim);});}
+        footer([s.wifiScanBusy?null:'SCAN',s.wifiNetworks.length?'UP':null,null,'BACK',s.wifiNetworks.length?'DOWN':null,s.wifiNetworks.length?'CONNECT':null]);
+      }
+      else if(v==='network')list('NETWORK',['SCAN WIFI','PHONE SETUP','OTA UPDATE','WIFI STATUS','FORGET WIFI'],s.networkSelection,['wifi','wifi','system','wifi','wifi']);
       else if(v==='system')list('SYSTEM',['DIAGNOSTICS','BUTTON TEST','LED TEST','SPEAKER TEST','DISPLAY TEST'],s.systemSelection,['system','light','light','sound','sun']);
-      else if(v==='wifiMethod')list('WIFI SETUP',['TYPE MANUALLY','PHONE SETUP'],s.methodSelection,['edit','wifi']);
       else if(v==='battery')battery();
       else if(v==='sound'){
         header('SOUND MIXER');
         const rows=[['UTAMA',s.masterVolume??70],['BGM MENU',s.bgmVolume??35],['SFX',s.sfxVolume??75]];
-        rows.forEach(([label,value],i)=>{const y=37+i*51,selected=i===(s.soundSelection||0);rect(11,y,298,45,P.panel);if(selected)frame(11,y,298,45,P.amber,2);text(label,22,y+8,1,selected?P.amber:P.paper);text(value+'%',298,y+8,1,P.paper,'right');frame(22,y+25,276,9,P.line);rect(24,y+27,Math.round(272*value/100),5,selected?P.amber:P.dim);});
+        rows.forEach(([label,value],i)=>{const y=37+i*51,selected=i===(s.soundSelection||0);rect(11,y,298,45,P.panel);if(selected)frame(11,y,298,45,P.amber,2);smallText(label,22,y+8,selected?P.amber:P.paper);smallText(value+'%',298,y+8,P.paper,'right');frame(22,y+25,276,9,P.line);rect(24,y+27,Math.round(272*value/100),5,selected?P.amber:P.dim);});
         footer(['VOL -','UP','VOL +','BACK','DOWN','BACK']);
       }
       else if(v==='display'){
         header('DISPLAY');
         text('KECERAHAN',15,46,2,s.displaySelection===0?P.amber:P.paper);text(s.display+'%',302,72,3,P.paper,'right');
         text('SPI CLOCK',15,114,2,s.displaySelection===1?P.amber:P.paper);text(s.spiMHz+' MHZ',302,140,3,P.paper,'right');
-        text(s.spiTrial?'KONFIRMASI '+s.spiRemaining+'S / AUTO 10 MHZ':'FPS DIUKUR PADA PERANGKAT',160,187,1,P.dim,'center');
+        smallText(s.spiTrial?'KONFIRMASI '+s.spiRemaining+'S / AUTO 10 MHZ':'FPS DIUKUR PADA PERANGKAT',160,187,P.dim,'center');
         footer(s.spiTrial?[null,null,null,'RESET',null,'STABIL']:['LESS','UP','MORE','BACK','DOWN',null]);
       }
       else if(['leds','theme'].includes(v)){
@@ -506,44 +527,49 @@
         const value=v==='sound'?(s.sound?'ON':'OFF'):v==='display'?s.display+'%':v==='leds'?s.leds+'%':s.theme;
         detail(titles[v],value,'',symbols[v]);
       }else if(v==='profile'){
-        header('PROFILE');catSprite('groom',160,111);text(s.playerName||'PLAYER',160,122,3,P.paper,'center');text('ID '+s.playerId.slice(-8),160,162,1,P.dim,'center');footer([null,null,null,'BACK',null,'EDIT']);
+        header('PROFILE');catSprite('groom',160,111);text(s.playerName||'PLAYER',160,122,3,P.paper,'center');smallText('ID '+s.playerId.slice(-8),160,162,P.dim,'center');footer([null,null,null,'BACK',null,'EDIT']);
       }else if(v==='stats'){
         header('ACHIEVEMENTS');catSprite('happy',257,87);
-        [['GAMES',s.games],['BEST SCORE',s.best],['REACTION',s.bestReaction==null?'--':s.bestReaction+' MS']].forEach(([a,b],i)=>{text(a,15,57+i*49,1,P.dim);text(b,304,74+i*49,2,P.paper,'right');line(15,96+i*49,304,96+i*49,P.line);});footer([null,null,null,'BACK']);
+        [['GAMES',s.games],['BEST SCORE',s.best],['REACTION',s.bestReaction==null?'--':s.bestReaction+' MS']].forEach(([a,b],i)=>{smallText(a,15,57+i*49,P.dim);text(b,304,74+i*49,2,P.paper,'right');line(15,96+i*49,304,96+i*49,P.line);});footer([null,null,null,'BACK']);
       }else if(v==='nameEditor'){
-        header(s.namePurpose==='first'?'WELCOME TO REMORA':'EDIT PROFILE');cow(132,37,1,'happy',false);text('SIAPA NAMAMU?',160,83,2,P.paper,'center');
+        header(s.namePurpose==='first'?(s.nameReturnView?'TAMBAH PEMAIN':'WELCOME TO REMORA'):'EDIT PROFILE');cow(132,37,1,'happy',false);text('SIAPA NAMAMU?',160,83,2,P.paper,'center');
         s.nameChars.forEach((ch,i)=>{const x=17+i*42;frame(x,118,35,36,i===s.nameCursor?P.amber:P.line,2);text(ch||'_',x+17,129,2,i===s.nameCursor?P.amber:P.paper,'center');});
-        text(s.nameError||'IKUTI WARNA TOMBOL DI BAWAH',160,181,1,s.nameError?P.red:P.dim,'center');footer(['LEFT','PREV','RIGHT','DELETE','NEXT','SAVE']);
+        smallText(s.nameError||(s.nameReturnView?'TAHAN MERAH 1 DETIK: BATAL':'IKUTI WARNA TOMBOL DI BAWAH'),160,181,s.nameError?P.red:P.dim,'center');footer(['LEFT','PREV','RIGHT',s.nameReturnView&&s.nameChars.every(ch=>ch===null||ch===' ')?'BATAL':'DELETE','NEXT','SAVE']);
       }else if(v==='textEntry'){
-        header(s.textKind==='ssid'?'WIFI NAME':'WIFI PASSWORD');text('GROUP '+['ABC','abc','123','SYM'][s.textGroup],15,49,2,P.amber);
-        frame(12,85,296,37,P.line);const value=s.textKind==='password'&&!s.showPassword?'*'.repeat(s.textBuffer.length):s.textBuffer;text(value.slice(-24)||'_',20,98,1,P.paper);
-        text('CHAR: '+s.textCurrentChar,15,139,2,P.paper);text(s.textError||'TAHAN HIJAU: SELESAI',15,174,1,s.textError?P.red:P.dim);if(s.textKind==='password')text('TAHAN MERAH: SHOW / HIDE',15,192,1,P.dim);footer(['GROUP-','PREV','GROUP+','DELETE','NEXT','ADD']);
+        header('WIFI PASSWORD');text('GROUP '+['ABC','abc','123','SYM'][s.textGroup],15,49,2,P.amber);
+        frame(12,85,296,37,P.line);const value=s.textKind==='password'&&!s.showPassword?'*'.repeat(s.textBuffer.length):s.textBuffer;smallText(value.slice(-24)||'_',20,98,P.paper);
+        text('CHAR: '+s.textCurrentChar,15,139,2,P.paper);smallText(s.textError||'TAHAN HIJAU: SELESAI',15,174,s.textError?P.red:P.dim);if(s.textKind==='password')smallText('TAHAN MERAH: SHOW / HIDE',15,192,P.dim);footer(['GROUP-','PREV','GROUP+',s.connectionMethod==='scan'&&!s.textBuffer?'BACK':'DELETE','NEXT','ADD']);
       }else if(v==='diagnostics'){
         header('DIAGNOSTICS');const rows=[['FW','PIXEL 1.0'],['PLAYER',s.playerName],['BATTERY',s.batteryPercent+'%'],['VOLTAGE',s.batteryVoltage.toFixed(2)+'V'],['FREE HEAP','SIM'],['UPTIME',Math.floor((performance.now()-s.bootStartedAt)/1000)+'S'],['WIFI',s.wifiPower],['RSSI','--'],['DEVICE ID',s.playerId.slice(-6)],['GAMES',s.games],['INPUTS',s.totalCorrect]];
-        rows.slice(s.diagnosticsOffset,s.diagnosticsOffset+6).forEach(([a,b],i)=>{text(a,15,43+i*26,1,P.dim);text(b,304,43+i*26,1,P.paper,'right');});footer([null,'UP',null,'BACK','DOWN']);
+        rows.slice(s.diagnosticsOffset,s.diagnosticsOffset+6).forEach(([a,b],i)=>{smallText(a,15,43+i*26,P.dim);smallText(b,304,43+i*26,P.paper,'right');});footer([null,'UP',null,'BACK','DOWN']);
       }else if(v==='displayTest'){
-        header('DISPLAY TEST','320 X 240');[P.red,P.amber,P.green,P.cyan,P.blue,P.purple].forEach((c,i)=>rect(12+i*50,49,46,112,c));text('NATIVE PIXELS / NO SMOOTHING',160,183,1,P.paper,'center');footer([null,null,null,'BACK']);
+        header('DISPLAY TEST','320 X 240');[P.red,P.amber,P.green,P.cyan,P.blue,P.purple].forEach((c,i)=>rect(12+i*50,49,46,112,c));smallText('NATIVE PIXELS / NO SMOOTHING',160,183,P.paper,'center');footer([null,null,null,'BACK']);
       }else if(v==='buttonTest'||v==='speakerTest'){
-        header(v==='buttonTest'?'BUTTON TEST':'SPEAKER TEST');for(let i=0;i<6;i++){const x=48+i%3*78,y=55+Math.floor(i/3)*61;frame(x,y,66,48,keys[i],2);if(s.testKey===i+1)rect(x+4,y+4,58,40,keys[i]);}text('TAHAN KIRI BAWAH UNTUK KEMBALI',160,212,1,P.dim,'center');
+        header(v==='buttonTest'?'BUTTON TEST':'SPEAKER TEST');for(let i=0;i<6;i++){const x=48+i%3*78,y=55+Math.floor(i/3)*61;frame(x,y,66,48,keys[i],2);if(s.testKey===i+1)rect(x+4,y+4,58,40,keys[i]);}smallText('TAHAN KIRI BAWAH UNTUK KEMBALI',160,212,P.dim,'center');
       }else if(v==='ledTest'){detail('LED TEST',['RED','GREEN','BLUE','WHITE'][s.ledTestColor],'LIHAT KEENAM TOMBOL','light',[null,null,null,'BACK']);}
       else if(v==='phoneSetup'){
-        header('PHONE SETUP');text('HUBUNGKAN PONSEL KE:',15,48,1,P.dim);text('REMORA-'+s.playerId.slice(-4),15,71,2,P.amber);text('PASS: '+s.portalAPPassword,15,108,1,P.paper);text('OPEN 192.168.4.1',15,137,2,P.paper);text('FORM DEMO ADA DI BAWAH KONSOL',15,184,1,P.dim);footer([null,null,null,'BACK']);
-      }else if(['wifiNotSet','wifiConfirm','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].includes(v)){
-        const details={wifiNotSet:['WIFI','WIFI NOT SET','SETUP WIFI?', 'SETUP'],wifiConfirm:['CONNECT WIFI',s.manualSSID.slice(-18),'SIMULATED CONNECTION','CONNECT'],wifiConnecting:['WIFI','CONNECTING...','SIMULATION',null],wifiResult:['WIFI',s.networkError?'FAILED':'CONNECTED',s.networkError||s.wifiSSID,'RETRY'],wifiStatus:['WIFI STATUS',s.wifiPower==='off'?'WIFI OFF':'WIFI ON',s.wifiSSID||'NO NETWORK',null],forgetWifi:['FORGET WIFI','HAPUS JARINGAN?',s.wifiSSID||'NONE','CONFIRM'],networkDemo:[s.networkOperation,'NETWORK DEMO','NO SERVER CONNECTED',null]};
+        header('PHONE SETUP');smallText('HUBUNGKAN PONSEL KE:',15,48,P.dim);text('REMORA-'+s.playerId.slice(-4),15,71,2,P.amber);smallText('PASS: '+s.portalAPPassword,15,108,P.paper);text('OPEN 192.168.4.1',15,137,2,P.paper);smallText('FORM DEMO ADA DI BAWAH KONSOL',15,184,P.dim);footer([null,null,null,'BACK']);
+      }else if(['wifiNotSet','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].includes(v)){
+        const details={wifiNotSet:['WIFI','WIFI NOT SET','SETUP WIFI?', 'SETUP'],wifiConnecting:['WIFI','CONNECTING...','SIMULATION',null],wifiResult:['WIFI',s.networkError?'FAILED':'CONNECTED',s.networkError||s.wifiSSID,'RETRY'],wifiStatus:['WIFI STATUS',s.wifiPower==='off'?'WIFI OFF':'WIFI ON',s.wifiSSID||'NO NETWORK',null],forgetWifi:['FORGET WIFI','HAPUS JARINGAN?',s.wifiSSID||'NONE','CONFIRM'],networkDemo:[s.networkOperation,'NETWORK DEMO','NO SERVER CONNECTED',null]};
         const [a,b,c,d]=details[v];
         const busy=v==='wifiConnecting'||(v==='wifiResult'&&!s.networkError);
-        detail(a,b,c,'wifi',busy?[]:[null,null,v==='wifiResult'&&s.networkError?'EDIT':null,v==='wifiConfirm'?'EDIT':'BACK',null,d]);
+        detail(a,b,c,'wifi',busy?[]:[null,null,v==='wifiResult'&&s.networkError?'EDIT':null,'BACK',null,d]);
       }else gameplay();
-      if(s.tutorialStep>=0){
-        const message=root.RemoraTutorial.message(s.tutorialStep,s.playerName),shown=s.tutorialReveal?message.length:Math.max(0,Math.floor((s.animationTime-s.tutorialStartedAt)/30));
-        frame(8,108,304,96,P.amber,2);rect(10,110,300,92,P.panel);rect(15,98,54,15,P.panel);frame(15,98,54,15,P.amber);text('MEOW',24,102,1,P.paper);
-        const cat=root.RemoraCatSprites.sit;catSprite('sit',40,184,false,48/cat.w);
-        const rows=[];let row='';for(const word of message.slice(0,shown).split(' ')){if((row+' '+word).trim().length>19){rows.push(row);row=word;}else row=(row+' '+word).trim();}rows.push(row);
-        rows.slice(0,4).forEach((v,i)=>text(v,77,121+i*18,2,P.paper));footer([s.tutorialStep===2&&s.guidePage?'PREV':null,s.tutorialStep===1?'INFO':null,s.tutorialStep===3?'HARDER':s.tutorialStep===2&&s.guidePage+1<s.guidePages?'NEXT':null,null,null,shown<message.length?'TEXT':[1,3].includes(s.tutorialStep)?null:'NEXT']);
+      if(s.tutorialStep>=0&&v!=='shutdownConfirm'){
+        const step=s.tutorialStep,message=root.RemoraTutorial.message(step,s.playerName),shown=s.tutorialReveal?message.length:Math.max(0,Math.floor((s.animationTime-s.tutorialStartedAt)/30));
+        if(s.tutorialDialog!==false){
+          const measure=value=>[...value].reduce((w,ch)=>w+(F[ch]||F['?']).split('/')[0].length+1,0)*2-2;
+          const rows=[];let row='';for(const word of message.split(' ')){if(measure((row+' '+word).trim())>258&&row){rows.push(row);row=word;}else row=(row+' '+word).trim();}rows.push(row);
+          frame(16,140,288,64,P.amber,2);rect(18,142,284,60,P.panel);
+          const cat=root.RemoraCatSprites.sit;catSprite('sit',42,140,false,34/cat.w);
+          let offset=0;const top=172-Math.round((rows.length*16-2)/2);
+          rows.forEach((line,i)=>{const visible=Math.max(0,Math.min(line.length,shown-offset));if(visible)text(line.slice(0,visible),160-Math.floor(measure(line)/2),top+i*16,2,P.paper);offset+=line.length+1;});
+          footer([null,null,null,null,null,shown<message.length?'TEXT':step===0||step===6?'LANJUT':'TUTUP']);
+        }else footer([step===2&&s.guidePage?'PREV':null,step===1?'INFO':step===5?'UP':null,step===3?'HARDER':step===2&&s.guidePage+1<s.guidePages?'NEXT':null,null,step===5?'DOWN':null,[2,4,5].includes(step)?(step===4?'SETTINGS':'LANJUT'):null]);
       }
       if(s.exitHolding&&(s.animationTime||0)-s.exitHoldStarted>=900){
         const progress=Math.min(1,((s.animationTime||0)-s.exitHoldStarted)/2000);
-        rect(34,91,252,50,P.panel);frame(34,91,252,50,P.red,2);text('TAHAN KIRI BAWAH 2S: KELUAR',160,103,1,P.paper,'center');
+        rect(34,91,252,50,P.panel);frame(34,91,252,50,P.red,2);smallText('TAHAN KIRI BAWAH 2S: KELUAR',160,103,P.paper,'center');
         frame(45,121,230,9,P.line);rect(47,123,Math.round(226*progress),5,P.red);
       }
     }

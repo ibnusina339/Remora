@@ -34,7 +34,7 @@ function solve(app){
     else if(s.view==='snakeInput'){
       const g=s.game,queue=[[g.body[0],[]]],seen=new Set(g.body.slice(0,-1).concat(g.rocks));seen.delete(g.body[0]);let route;
       for(let i=0;i<queue.length;i++){const [cell,path]=queue[i];if(cell===g.food){route=path;break;}for(const [n,delta]of [[1,-1],[2,-g.cols],[3,1],[5,g.cols]]){const next=cell+delta;if(next<0||next>=g.cols*g.rows||Math.abs(delta)===1&&Math.floor(next/g.cols)!==Math.floor(cell/g.cols)||seen.has(next))continue;seen.add(next);queue.push([next,path.concat(n)]);}}
-      assert.ok(route?.length,'snake has a route to grass');e.press(route[0]);advance(g.tickMs);
+      assert.ok(route?.length,'snake has a route to grass');e.press(({1:4,2:2,3:6,5:5})[route[0]]);advance(g.tickMs);
     }
     else if(s.view==='pongInput'){const g=s.game;g.ball={x:24,y:34,vx:0,vy:-3};advance(40);}
     else if(s.view==='reactionGo'){
@@ -46,8 +46,8 @@ function solve(app){
 }
 function enterDecimal(app,value){
   const {state:s,engine:e}=app,digits=String(value).padStart(3,'0').split('').map(Number);
-  for(let i=2;i>=0;i--){const amount=(digits[i]-s.game.digits[i]+10)%10;for(let j=0;j<(amount<=5?amount:10-amount);j++)e.press(amount<=5?6:4);if(i>0)e.press(1);}
-  e.press(5);
+  for(let i=2;i>=0;i--){const amount=(digits[i]-s.game.digits[i]+10)%10;for(let j=0;j<(amount<=5?amount:10-amount);j++)e.press(amount<=5?2:5);if(i>0)e.press(1);}
+  e.press(6);
 }
 for(const entry of catalog)for(let difficulty=0;difficulty<5;difficulty++){
   const app=launch(entry.mode,difficulty);solve(app);
@@ -114,7 +114,7 @@ for(let difficulty=0;difficulty<5;difficulty++){
     const edge=launch('decoder',difficulty,37,random);assert.equal(edge.state.game.answers[0],random===0?0:2**bits-1);solve(edge);
   }
 }
-const edit=launch('decoder',0);edit.until(()=>edit.state.view==='decoderInput');edit.engine.press(4);assert.equal(edit.state.game.digits[2],9);edit.engine.press(2);assert.equal(edit.state.game.digits[2],0);edit.engine.press(3);assert.equal(edit.state.game.digitIndex,0);edit.engine.press(1);assert.equal(edit.state.game.digitIndex,2);
+const edit=launch('decoder',0);edit.until(()=>edit.state.view==='decoderInput');edit.engine.press(5);assert.equal(edit.state.game.digits[2],9);edit.engine.press(4);assert.equal(edit.state.game.digits[2],0);edit.engine.press(3);assert.equal(edit.state.game.digitIndex,0);edit.engine.press(1);assert.equal(edit.state.game.digitIndex,2);
 // Variety and score-sensitive responses, including record-breaking runs.
 for(const entry of catalog){const feedback=sandbox.window.RemoraFeedback;assert.equal(new Set(feedback.success[entry.mode]).size,15);assert.equal(feedback.loss(entry.mode,0,0,false).tier,0);assert.equal(feedback.loss(entry.mode,1800,9,false).tier,3);assert.equal(feedback.loss(entry.mode,200,1,true).tier,4);}
 // Completing actual rounds reaches level 6/11 without changing the selected difficulty.
@@ -154,7 +154,7 @@ for(const mode of ['classic','reaction','maze','whack','potato','direction','mis
 }
 const feedback=sandbox.window.RemoraFeedback;assert.equal(feedback.extraEndings.length,20);assert.equal(new Set(feedback.extraEndings.map(v=>v.text)).size,20);assert.equal(new Set(feedback.extraEndings.map(v=>v.tone)).size,4);
 const randomReply=launch('classic',0);let lastLine;for(let i=0;i<35;i++){randomReply.engine.start('classic');randomReply.engine.fail('TEST');assert.notEqual(randomReply.state.endMessage,lastLine);lastLine=randomReply.state.endMessage;}
-const deadSnake=launch('snake',0);deadSnake.state.game.body=[0,1,2];deadSnake.state.game.dir=1;deadSnake.state.game.nextDir=1;deadSnake.advance(deadSnake.state.game.tickMs);assert.equal(deadSnake.state.view,'gameover');
+const deadSnake=launch('snake',3);deadSnake.state.game.body=[0,1,2];deadSnake.state.game.dir=1;deadSnake.state.game.nextDir=1;deadSnake.advance(deadSnake.state.game.tickMs);assert.equal(deadSnake.state.view,'gameover');
 const lostPong=launch('pong',4);lostPong.state.game.lives=1;lostPong.state.game.ball={x:24,y:167,vx:0,vy:4};lostPong.advance(40);assert.equal(lostPong.state.view,'gameover');
 // Stronger Pong applies to every preset, without a large jump at level six.
 for(let d=0;d<5;d++){
@@ -167,3 +167,12 @@ const fastPong=launch('pong',4);fastPong.state.game.ball={x:160,y:142,vx:0,vy:20
 const predictive=launch('pong',3);predictive.state.game.ball={x:290,y:125,vx:5,vy:-6};predictive.state.game.aiError=0;predictive.advance(40);assert.ok(predictive.state.game.aiTarget>240&&predictive.state.game.aiTarget<250,'AI must predict the wall reflection');assert.ok(predictive.state.game.aiX>160);
 const rally=launch('pong',1),initialSpeed=rally.state.game.baseSpeed;rally.state.game.ball={x:160,y:147,vx:0,vy:initialSpeed};rally.advance(40);assert.ok(Math.hypot(rally.state.game.ball.vx,rally.state.game.ball.vy)>initialSpeed,'rally speed must grow');
 console.log('Arcade: all 11 games x 5 difficulties complete; controls, collisions, progression, records and feedback OK');
+
+for(let d=0;d<5;d++)for(const dir of [1,2,3,5]){
+ const a=launch('snake',d),g=a.state.game;
+ const head=dir===1?6*g.cols:dir===3?7*g.cols-1:dir===2?5:(g.rows-1)*g.cols+5;
+ const expected=dir===1?7*g.cols-1:dir===3?6*g.cols:dir===2?(g.rows-1)*g.cols+5:5;
+ g.body=[head];g.rocks=[];g.food=3*g.cols+10;g.dir=g.nextDir=dir;a.advance(g.tickMs);
+ if(d<3){assert.equal(a.state.view,'snakeInput');assert.equal(g.body[0],expected);}else assert.equal(a.state.view,'gameover');
+}
+console.log('Snake: four-edge wrapping on Easy/Normal/Hard; fatal walls on Expert/Master OK');

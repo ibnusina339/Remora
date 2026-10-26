@@ -246,7 +246,7 @@
           <button class="key" type="button" data-key="6" aria-label="Tombol hijau, kanan bawah"></button>
         </div>
       </section>
-      <p class="hint" id="simulator-hint">Klik ON · gunakan tombol warna atau keyboard Q W E / A S D.</p>
+      <p class="hint" id="simulator-hint">Klik ON · gunakan tombol warna atau keyboard Q W E / A S D atau numpad 4 5 6 / 1 2 3.</p>
       <section class="battery-demo" aria-label="Kontrol baterai simulasi">
         <label for="battery-level">Baterai simulasi <output id="battery-value">78%</output></label>
         <input id="battery-level" type="range" min="0" max="100" value="78">
@@ -311,7 +311,7 @@
       const homeColors = [C.cyan, C.yellow, C.purple, C.green, C.blue, C.white];
       const gameCatalog = window.RemoraArcade.catalog;
       const settingsItems = ['SOUND', 'DISPLAY', 'THEME', 'KEY LIGHT', 'BATTERY', 'PROFILE', 'NETWORK', 'SYSTEM', 'STATS', 'FIRST LOGIN'];
-      const networkItems = ['SETUP WIFI', 'OTA UPDATE', 'WIFI STATUS', 'FORGET WIFI'];
+      const networkItems = ['SCAN WIFI', 'PHONE SETUP', 'OTA UPDATE', 'WIFI STATUS', 'FORGET WIFI'];
       const systemItems = ['DIAGNOSTICS', 'BUTTON TEST', 'LED TEST', 'SPEAKER TEST', 'DISPLAY TEST'];
       const ledTestColors = [C.red, C.green, C.blue, C.white];
       const ledTestNames = ['RED', 'GREEN', 'BLUE', 'WHITE'];
@@ -360,11 +360,11 @@
         peekInfoGame: -1, peekInfoSide: 'left', peekInfoBottom: 64,
         wrongKey: 0, expectedKey: 0, target: 0, reactionStart: 0, result: '', elapsed: 0,
         pressedKey: 0, speedDeadline: 0, game: {}, clears: 0, message: '', endMessage: '', phraseCounters: {}, nameChars: Array(7).fill(null), nameCursor: 0,
-        namePurpose: 'first', nameError: '', networkSelection: 0, methodSelection: 0,
-        networkSource: 'network', wifiSSID: '', wifiConfigured: false, wifiPower: 'off',
+        namePurpose: 'first', nameReturnView:null, nameError: '', networkSelection: 0,
+        networkSource: 'network', wifiSSID: '', wifiConfigured: false, wifiPower: 'off', wifiScanBusy:false,wifiScanSelection:0,wifiNetworks:[],wifiPasswordRequired:false,
         portalAPPassword: '',
         systemSelection: 0, diagnosticsOffset: 0, testKey: 0, ledTestColor: 0,
-        manualSSID: '', manualPassword: '', textKind: 'ssid', textBuffer: '', textGroup: 0,
+        manualSSID: '', manualPassword: '', textKind: 'password', textBuffer: '', textGroup: 0,
         textChar: 0, textError: '', showPassword: false, connectionMethod: '',
         networkOperation: '', networkError: '' };
       const profiles=window.RemoraProfiles.create(localStorage,defaults,saved);
@@ -384,7 +384,11 @@
       let batterySleepTimer = null;
       let exitHoldTimer = null, keyboardRedHeld = false, keyboardRedHandled = false;
       let secretTapCount=0,secretLastTap=-Infinity;
+      let nameCancelTimer=null,nameCancelConsumed=false;
+      let shutdownHoldAt=-1,shutdownContext=null,shutdownConsumed=0,keyboardThirdHeld=false,keyboardThirdHandled=false,keyboardFirstHeld=false,keyboardFirstHandled=false,menuRepeated=0;
       const keyboardKeys = {q:1,w:2,e:3,a:4,s:5,d:6};
+      const numpadKeys = {Numpad4:1,Numpad5:2,Numpad6:3,Numpad1:4,Numpad2:5,Numpad3:6};
+      function keyboardButton(event){return numpadKeys[event.code]||keyboardKeys[event.key.toLowerCase()];}
       const bootLogo = new Image();
       bootLogo.onload = () => { if (state.power === 'boot') render(); };
       bootLogo.src = 'assets/boot-logo-dark.png';
@@ -480,8 +484,8 @@
           mazePreview: 'Perhatikan peta: kotak terang adalah pemain, G tujuan, P portal, dan * bonus.',
           mazeInput: 'Tengah atas: naik · kanan atas: kanan · tengah bawah: turun · kiri atas: kiri. Panah keyboard juga bisa.',
           decoderWatch: 'Hitung bit dari sinyal HIGH/LOW. Perhatikan aturan INVERT dan LSB pada Difficulty tinggi.',
-          decoderInput: 'Atas kiri/kanan: pindah digit · bawah kiri/kanan: kurangi/tambah angka · tengah atas: hapus · tengah bawah: OK.',
-          snakeInput:'Panah atau Q/W/E/S untuk menggiring ular sapi mencari rumput.',
+          decoderInput: 'Atas kiri/kanan: pindah digit · tengah atas/bawah: tambah/kurangi angka · bawah kiri: hapus · bawah kanan: OK.',
+          snakeInput:'Tengah atas: naik � tengah bawah: turun � kiri bawah: kiri � kanan bawah: kanan. Keyboard W/S/A/D atau panah.',
           pongInput:'Q/E atau panah kiri/kanan: gerakkan papan. Tahan untuk bergerak terus.',
           directionPreview: 'Ingat kartu panah dan blok warna pengganti nomor tombol. Ikuti rotasi serta cermin yang ditampilkan.',
           directionInput: 'Ikuti kartu arah: tekan keyswitch yang lampunya sesuai blok warna tujuan.',
@@ -495,10 +499,10 @@
           gameover: 'Merah menu · hijau main lagi dengan Difficulty yang sama.',
           reactionResult: 'Level berikutnya akan dimulai · hijau lanjut sekarang · merah kembali ke menu.'
         };
-        const hint = state.power === 'off' ? 'Klik ON · gunakan tombol warna atau keyboard Q W E / A S D.' :
+        const hint = state.power === 'off' ? 'Klik ON · gunakan tombol warna atau keyboard Q W E / A S D atau numpad 4 5 6 / 1 2 3.' :
           state.power === 'boot' ? 'REMORA sedang menyala…' : state.power === 'standby' ? 'Tahan kiri atas + kanan atas 2 detik untuk main. Saat USB tersambung, tahan kiri atas 2 detik untuk melihat baterai 5 detik.' : state.power === 'sleep' ? 'Standby.' :
           state.view === 'chargeRequired' ? state.charging ? 'Charger tersambung. Naikkan baterai simulasi ke 5% untuk melanjutkan.' : 'Baterai habis. Sambungkan charger sebelum melanjutkan.' :
-          instructions[state.view] || (arcade.active() ? 'Gunakan tombol warna atau keyboard Q W E / A S D.' : 'Ikuti swatch warna pada layar · keyboard Q W E / A S D juga bisa digunakan.');
+          instructions[state.view] || (arcade.active() ? 'Gunakan tombol warna atau keyboard Q W E / A S D atau numpad 4 5 6 / 1 2 3.' : 'Ikuti swatch warna pada layar · keyboard Q W E / A S D atau numpad 4 5 6 / 1 2 3 juga bisa digunakan.');
         const hideWhackHints=state.mode==='whack'&&state.view==='whackInput'&&(state.effectiveDifficulty??state.difficulty)>=2;
         document.getElementById('simulator-hint').textContent = hideWhackHints?'':hint+(arcade.active()?' Tahan keyswitch kiri bawah dua detik untuk keluar, atau tekan Escape.':'');
         phonePreview.hidden = !(state.view === 'phoneSetup' ||
@@ -552,7 +556,7 @@
       function powerInput(){return {usb:state.charging,percent:state.batteryPercent,keys:powerKeys,critical:state.batteryVoltage>0&&state.batteryVoltage<3.2};}
       function applyPowerPhase(phase){
         if(phase===powerPrevious)return;
-        const before=powerPrevious;powerPrevious=phase;state.powerPhase=phase;
+        const before=powerPrevious;if(phase!=='play'){clearNameCancelHold();if(shutdownContext)resumeShutdownContext(false);}powerPrevious=phase;state.powerPhase=phase;
         if(phase==='play'){
           if(suspendedView){const gap=performance.now()-(state.suspendedAt||performance.now());state.view=suspendedView;suspendedView=null;state.power='on';if(state.speedDeadline)state.speedDeadline+=gap;if(state.reactionStart)state.reactionStart+=gap;for(const c of state.game.cues||[]){if(c.firstTap)c.firstTap+=gap;if(c.holdStart)c.holdStart+=gap;}resumeTimers();startAnimation();render();}
           else bootUi();
@@ -565,7 +569,7 @@
           cancelExitHold();stopAnimation();state.power='on';state.view='powerNotice';state.noticeKind=phase;render();
         }
       }
-      function powerTick(){if(['off','shutdown'].includes(state.power))return;applyPowerPhase(powerPolicy.update(performance.now(),powerInput()));if(displaySettings.tick(performance.now()))render();}
+      function powerTick(){if(['off','shutdown'].includes(state.power))return;applyPowerPhase(powerPolicy.update(performance.now(),powerInput()));if(displaySettings.tick(performance.now()))render();checkShutdownShortcut();}
       setInterval(powerTick,20);
       batterySlider.addEventListener('input', () => setBatteryPercent(batterySlider.value));
       chargerCheckbox.addEventListener('change', () => setCharging(chargerCheckbox.checked));
@@ -609,10 +613,10 @@
         say('REMORA sedang booting');
         bootFrame = requestAnimationFrame(bootTick);
       }
-      function powerOff() {
+      function powerOff(toStandby=false) {
         if(state.power==='shutdown')return;
         audio.unlock();
-        powerPolicy.off();powerPrevious='off';suspendedView=null;
+        if(toStandby)powerPolicy.standby();else powerPolicy.off();powerPrevious=toStandby?'play':'off';suspendedView=null;shutdownContext=null;shutdownHoldAt=-1;state.tutorialStep=-1;save();
         cancelExitHold();
         stopTimers(); stopAnimation(); cancelBatterySleep();
         if (bootFrame) cancelAnimationFrame(bootFrame);
@@ -625,7 +629,7 @@
         portalPassword.value = '';
         render();
         say('REMORA sedang dimatikan');
-        const shutdownTick=now=>{if(state.power!=='shutdown')return;if(now-state.shutdownStartedAt>=SHUTDOWN_DURATION_MS){bootFrame=0;state.power='off';state.view='off';state.mode=null;audio.silence();render();say('REMORA mati');return;}render();bootFrame=requestAnimationFrame(shutdownTick);};
+        const shutdownTick=now=>{if(state.power!=='shutdown')return;if(now-state.shutdownStartedAt>=SHUTDOWN_DURATION_MS){bootFrame=0;state.mode=null;audio.silence();if(toStandby)applyPowerPhase('standby');else{state.power='off';state.view='off';render();}say('REMORA mati');return;}render();bootFrame=requestAnimationFrame(shutdownTick);};
         bootFrame=requestAnimationFrame(shutdownTick);
       }
       powerSwitch.addEventListener('click', () => state.power === 'off' ? powerOn() : powerOff());
@@ -635,7 +639,8 @@
         else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
         return [...bytes].map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase();
       }
-      function startNameEditor(purpose) {
+      function startNameEditor(purpose,returnView=purpose==='change'?'profile':null) {
+        clearNameCancelHold();state.nameReturnView=returnView;
         state.namePurpose = purpose;
         state.nameChars = Array(7).fill(null);
         if (purpose === 'change') [...state.playerName].slice(0, 7).forEach((char, i) => { state.nameChars[i] = char; });
@@ -644,6 +649,14 @@
         state.view = 'nameEditor';
         render();
         say(purpose === 'first' ? 'Buat nama pemain, satu sampai tujuh karakter' : 'Ubah nama pemain');
+      }
+      function canCancelName(){return state.view==='nameEditor'&&Boolean(state.nameReturnView);}
+      function clearNameCancelHold(){if(nameCancelTimer!==null)clearTimeout(nameCancelTimer);nameCancelTimer=null;}
+      function cancelNameEditor(){
+        if(!canCancelName())return;
+        clearNameCancelHold();if(powerKeys&8)nameCancelConsumed=true;
+        const target=state.nameReturnView;state.nameChars=Array(7).fill(null);state.nameError='';state.nameReturnView=null;state.view=target;
+        render();say('Pembuatan atau perubahan nama dibatalkan. Profil tidak disimpan.');
       }
       function savePlayerName() {
         const name = state.nameChars.map(char => char === null ? '' : char).join('').trim();
@@ -655,7 +668,7 @@
         if (!state.playerId) state.playerId = newPlayerId();
         save();
         if(state.namePurpose==='first'){startTutorial(0);return;}
-        state.view = 'profile';
+        state.view = state.nameReturnView||'profile';state.nameReturnView=null;
         render(); say(`Nama pemain ${name} tersimpan`);
       }
       function editName(key) {
@@ -663,6 +676,7 @@
         if (key === 1) state.nameCursor = Math.max(0, state.nameCursor - 1);
         else if (key === 3) state.nameCursor = Math.min(6, state.nameCursor + 1);
         else if (key === 4) {
+          if(canCancelName()&&state.nameChars.every(ch=>ch===null||ch===' ')){cancelNameEditor();return;}
           if (state.nameChars[state.nameCursor] === null && state.nameCursor > 0) state.nameCursor--;
           state.nameChars[state.nameCursor] = null;
         } else if (key === 2 || key === 5) {
@@ -675,31 +689,32 @@
         render();
       }
       function startTutorial(step){
-        state.tutorialStep=step;state.tutorialStartedAt=performance.now();state.tutorialReveal=false;
+        state.tutorialStep=step;state.tutorialStartedAt=performance.now();state.tutorialReveal=false;state.tutorialDialog=true;
         state.modeSelection=0;state.mode=null;
-        state.view=step<=1?'home':step===2?'gameInfo':step<=4?'pregame':'settings';
+        state.view=step<=1||step===6?'home':step===2?'gameInfo':step<=4?'pregame':'settings';
         state.guidePage=0;state.selection=0;state.difficulty=state.difficultyByGame.classic??1;render();
       }
-      function finishTutorial(){state.tutorialStep=-1;profiles.finish(state);save();goHome();}
+      function finishTutorial(){state.tutorialStep=-1;state.modeSelection=0;profiles.finish(state);save();goHome();}
       function tutorialPress(key){
         const step=state.tutorialStep,message=window.RemoraTutorial.message(step,state.playerName);
-        if(!state.tutorialReveal&&performance.now()-state.tutorialStartedAt<message.length*30&&key===6){state.tutorialReveal=true;render();return;}
+        if(state.tutorialDialog!==false){if(key!==6){if(!((step===1&&key===2)||(step===3&&key===3)||(step===2&&(key===1||key===3))))return;state.tutorialDialog=false;}else{if(!state.tutorialReveal&&performance.now()-state.tutorialStartedAt<message.length*30){state.tutorialReveal=true;render();return;}if(step>0&&step<6){state.tutorialDialog=false;render();return;}}}
         if(step===0&&key===6)startTutorial(1);
         else if(step===1&&key===2)startTutorial(2);
         else if(step===2&&(key===1||key===3)){state.guidePage=Math.max(0,Math.min(state.guidePages-1,state.guidePage+(key===1?-1:1)));render();}
         else if(step===2&&key===6)startTutorial(3);
         else if(step===3&&key===3){state.difficultyByGame.classic=Math.min(4,state.difficulty+1);save();startTutorial(4);}
+        else if(step===5&&(key===2||key===5)){state.selection=(state.selection+(key===2?settingsItems.length-1:1))%settingsItems.length;render();}
         else if(step>=4&&key===6){if(step===6)finishTutorial();else startTutorial(step+1);}
       }
       function profilePress(key){
         if(state.view==='profiles'){
           if(key===2||key===5)state.profileSelection=(state.profileSelection+(key===2?4:1))%5;
           else if(key===4)state.view='settings';
-          else if(key===6){state.profileTarget=state.profileSelection;if(profiles.snapshot().profiles[state.profileTarget]){state.profileAction=0;state.view='profileAction';}else startNameEditor('first');}
+          else if(key===6){state.profileTarget=state.profileSelection;if(profiles.snapshot().profiles[state.profileTarget]){state.profileAction=0;state.view='profileAction';}else startNameEditor('first','profiles');}
         }else if(state.view==='profileAction'){
           if(key===2||key===5)state.profileAction=(state.profileAction+(key===2?2:1))%3;
           else if(key===4)state.view='profiles';
-          else if(key===6){if(state.profileAction===2)state.view='deleteProfile';else{profiles.switch(state,state.profileTarget);if(state.profileAction===1)startNameEditor('change');else if(!state.tutorialDone)startTutorial(0);else goHome();}}
+          else if(key===6){if(state.profileAction===2)state.view='deleteProfile';else{profiles.switch(state,state.profileTarget);if(state.profileAction===1)startNameEditor('change','profiles');else if(!state.tutorialDone)startTutorial(0);else goHome();}}
         }else if(state.view==='deleteProfile'){
           if(key===4)state.view='profiles';else if(key===6){profiles.remove(state,state.profileTarget);save();state.view='profiles';}
         }else if(state.view==='firstLoginConfirm'){
@@ -707,33 +722,33 @@
         }else if(state.view==='slotsFull'){if(key===4)state.view='settings';else if(key===6){state.view='profiles';state.profileSelection=profiles.snapshot().active;}}
         render();
       }
-      function openWifiMethod(source = 'network') {
-        state.networkSource = source;
-        state.methodSelection = 0;
-        state.view = 'wifiMethod';
-        render(); say('Pilih cara penyiapan Wi-Fi');
+      function startWifiScan(source=state.networkSource){
+        stopTimers();state.view='wifiScan';state.wifiScanBusy=true;state.wifiNetworks=[];state.wifiScanSelection=0;state.networkSource=source;render();
+        later(()=>{state.wifiScanBusy=false;state.wifiNetworks=[{ssid:'REMORA Home',rssi:-43,secured:true},{ssid:'WiFi Terbuka',rssi:-61,secured:false},{ssid:'Hotspot Ponsel',rssi:-72,secured:true}];render();},800);
+      }
+      function wifiScanPress(key){
+        if(key===4){stopTimers();state.wifiScanBusy=false;state.view='network';state.networkSelection=0;}
+        else if(key===1){if(!state.wifiScanBusy)startWifiScan();return;}
+        else if(!state.wifiScanBusy&&state.wifiNetworks.length){
+          if(key===2||key===5)state.wifiScanSelection=(state.wifiScanSelection+(key===2?state.wifiNetworks.length-1:1))%state.wifiNetworks.length;
+          else if(key===6){const net=state.wifiNetworks[state.wifiScanSelection];state.manualSSID=net.ssid;state.manualPassword='';state.connectionMethod='scan';state.wifiPasswordRequired=net.secured;if(net.secured)startTextEntry('password');else connectWifi(net.ssid,'','scan');return;}
+        }render();
       }
       function startTextEntry(kind) {
         state.textKind = kind;
-        state.textBuffer = kind === 'ssid' ? state.manualSSID : state.manualPassword;
+        state.textBuffer = state.manualPassword;
         state.textGroup = 0;
         state.textChar = 0;
         state.textError = '';
         state.showPassword = false;
         state.view = 'textEntry';
-        render(); say(kind === 'ssid' ? 'Masukkan SSID' : 'Masukkan kata sandi');
+        render(); say('Masukkan kata sandi');
       }
       function finishTextEntry() {
         if (state.view !== 'textEntry') return;
-        if (state.textKind === 'ssid') {
-          if (!state.textBuffer.trim()) { state.textError = 'SSID REQUIRED'; render(); return; }
-          state.manualSSID = state.textBuffer;
-          startTextEntry('password');
-        } else {
-          state.manualPassword = state.textBuffer;
-          state.view = 'wifiConfirm';
-          render(); say('Konfirmasi jaringan Wi-Fi');
-        }
+        if(state.wifiPasswordRequired&&state.textBuffer.length<8){state.textError=state.textBuffer.length?'MINIMAL 8 KARAKTER':'PASSWORD DIPERLUKAN';render();return;}
+        state.manualPassword = state.textBuffer;
+        connectWifi(state.manualSSID,state.manualPassword,'scan');
       }
       function editWifiText(key) {
         state.textError = '';
@@ -743,9 +758,9 @@
         } else if (key === 2 || key === 5) {
           const chars = textGroups[state.textGroup].chars;
           state.textChar = (state.textChar + (key === 2 ? -1 : 1) + chars.length) % chars.length;
-        } else if (key === 4) state.textBuffer = state.textBuffer.slice(0, -1);
+        } else if (key === 4){if(state.connectionMethod==='scan'&&!state.textBuffer){state.manualPassword='';state.view='wifiScan';}else state.textBuffer=state.textBuffer.slice(0,-1);}
         else if (key === 6) {
-          const maxLength = state.textKind === 'ssid' ? 32 : 63;
+          const maxLength = 63;
           if (state.textBuffer.length < maxLength) state.textBuffer += textGroups[state.textGroup].chars[state.textChar];
           else state.textError = 'MAX LENGTH';
         }
@@ -780,7 +795,7 @@
             state.manualPassword = '';
             portalPassword.value = '';
             later(() => {
-              if (state.networkSource === 'network') state.view = 'network';
+              if (state.networkSource === 'network') state.view = method==='scan'?'wifiScan':'network';
               else { state.networkOperation = state.networkSource; state.view = 'networkDemo'; }
               render();
             }, 1250);
@@ -799,7 +814,8 @@
       portalShow.addEventListener('change', () => { portalPassword.type = portalShow.checked ? 'text' : 'password'; });
       function chooseNetwork() {
         const item = networkItems[state.networkSelection];
-        if (item === 'SETUP WIFI') openWifiMethod();
+        if (item === 'SCAN WIFI') startWifiScan('network');
+        else if (item === 'PHONE SETUP') { state.networkSource='network';startPhoneSetup(); }
         else if (item === 'WIFI STATUS') { state.view = 'wifiStatus'; render(); }
         else if (item === 'FORGET WIFI') { state.view = 'forgetWifi'; render(); }
         else {
@@ -809,13 +825,31 @@
           render();
         }
       }
+      function resumeShutdownContext(resume=true){
+        if(!shutdownContext)return;
+        const gap=performance.now()-shutdownContext.at;state.view=shutdownContext.view;
+        if(state.speedDeadline)state.speedDeadline+=gap;if(state.reactionStart)state.reactionStart+=gap;
+        for(const c of state.game.cues||[]){if(c.firstTap)c.firstTap+=gap;if(c.holdStart)c.holdStart+=gap;}
+        if(state.tutorialStep>=0)state.tutorialStartedAt+=gap;
+        shutdownContext=null;shutdownHoldAt=-1;state.shutdownHolding=false;if(resume)resumeTimers();
+      }
+      function checkShutdownShortcut(){
+        if(state.view==='shutdownConfirm')return;
+        const eligible=state.power==='on'&&!['powerNotice','firstLoginCountdown'].includes(state.view);
+        if(eligible&&powerKeys===5){
+          if(!shutdownContext){clearNameCancelHold();shutdownContext={view:state.view,at:performance.now()};shutdownHoldAt=performance.now();shutdownConsumed|=5;state.shutdownHolding=true;state.shutdownHoldStarted=shutdownHoldAt;cancelExitHold();keyboardThirdHeld=false;keyboardFirstHeld=false;if(menuRepeat)clearTimeout(menuRepeat);menuRepeat=null;arcade.pauseInputs();pauseTimers();}
+          if(performance.now()-shutdownHoldAt>=2000){state.shutdownHolding=false;state.view='shutdownConfirm';render();say('Matikan REMORA? Merah batal, hijau matikan.');}
+        }else if(shutdownContext){resumeShutdownContext();render();}
+      }
       function cancelExitHold(keepKeyboard=false) { if(exitHoldTimer!==null)clearTimeout(exitHoldTimer);exitHoldTimer=null;state.exitHolding=false;if(!keepKeyboard)keyboardRedHeld=false; }
       function buttonDown(key,onExit) {
-        powerKeys|=1<<(key-1);powerTick();
+        menuRepeated&=~(1<<(key-1));powerKeys|=1<<(key-1);powerTick();
         if(state.power!=='on'||state.view==='powerNotice')return true;
-        if(state.tutorialStep>=0){if((powerKeys&40)===40&&!skipTutorialTimer)skipTutorialTimer=setTimeout(()=>{skipTutorialTimer=null;if(state.tutorialStep>=0&&(powerKeys&40)===40){finishTutorial();}},3000);return true;}
+        if(shutdownContext&&state.view!=='shutdownConfirm')return true;
+        if(key===4&&canCancelName()){clearNameCancelHold();nameCancelTimer=setTimeout(()=>{nameCancelTimer=null;if(state.power==='on'&&!shutdownContext&&canCancelName()){onExit?.();cancelNameEditor();}},1000);}
+        if(state.tutorialStep>=0){if((powerKeys&40)===40){if(!skipTutorialTimer)skipTutorialTimer=setTimeout(()=>{skipTutorialTimer=null;if(state.tutorialStep>=0&&(powerKeys&40)===40){finishTutorial();}},3000);return true;}return false;}
         if(['home','modeSelect'].includes(state.view)&&[1,3].includes(key)){
-          if(menuRepeat)clearTimeout(menuRepeat);const repeat=()=>{if((powerKeys&(1<<(key-1)))&&['home','modeSelect'].includes(state.view)){press(key);menuRepeat=setTimeout(repeat,150);}};menuRepeat=setTimeout(repeat,500);
+          if(menuRepeat)clearTimeout(menuRepeat);const repeat=()=>{if((powerKeys&(1<<(key-1)))&&['home','modeSelect'].includes(state.view)){menuRepeated|=1<<(key-1);press(key);menuRepeat=setTimeout(repeat,150);}};menuRepeat=setTimeout(repeat,500);
         }
         if(key===4&&state.power==='on'&&arcade.active()){
           cancelExitHold(true);state.exitHolding=true;state.exitHoldStarted=performance.now();const mode=state.mode;
@@ -828,7 +862,7 @@
         }
         return arcade.keyDown(key);
       }
-      function buttonUp(key){if(skipTutorialTimer){clearTimeout(skipTutorialTimer);skipTutorialTimer=null;}powerKeys&=~(1<<(key-1));powerTick();if(menuRepeat){clearTimeout(menuRepeat);menuRepeat=null;}if(key===4)cancelExitHold(true);return arcade.keyUp(key);}
+      function buttonUp(key){const consumed=Boolean((shutdownConsumed|menuRepeated)&(1<<(key-1)))||(key===4&&nameCancelConsumed);if(key===4){clearNameCancelHold();nameCancelConsumed=false;}shutdownConsumed&=~(1<<(key-1));menuRepeated&=~(1<<(key-1));if(skipTutorialTimer){clearTimeout(skipTutorialTimer);skipTutorialTimer=null;}powerKeys&=~(1<<(key-1));powerTick();if(menuRepeat){clearTimeout(menuRepeat);menuRepeat=null;}if(key===4)cancelExitHold(true);const handled=arcade.keyUp(key);return consumed||handled;}
       function goHome() { cancelExitHold();stopTimers(); state.view = 'home'; state.mode = null; state.pulse = 0; render(); say('Menu utama'); }
       function openPregame() {
         cancelExitHold();stopTimers();state.difficulty=state.difficultyByGame[gameCatalog[state.modeSelection].mode]??1; state.view = 'pregame'; state.mode = null; state.pulse = 0; render();
@@ -844,7 +878,7 @@
       function chooseSetting() {
         state.view = ['sound', 'display', 'theme', 'leds', 'battery', 'profiles', 'network', 'system', 'stats', 'firstLoginConfirm'][state.selection];
         if(state.view==='profiles'){save();state.profileSelection=profiles.snapshot().active;}
-        if (state.view === 'network') state.networkSelection = 0;
+        if (state.view === 'network'){state.networkSelection=0;state.networkSource='network';}
         if (state.view === 'sound') state.soundSelection = 0;
         if (state.view === 'system') state.systemSelection = 0;
         render(); say(settingsItems[state.selection]);
@@ -869,6 +903,7 @@
       function press(key) {
         if (state.power !== 'on' || ['chargeRequired','powerNotice'].includes(state.view) || key < 1 || key > 6) return;
         audio.unlock();
+        if(shutdownContext){if(state.view==='shutdownConfirm'){if(key===4){resumeShutdownContext();render();}else if(key===6){resumeShutdownContext(false);powerOff(true);}}return;}
         if(state.tutorialStep>=0){tutorialPress(key);return;}
         if(['profiles','profileAction','deleteProfile','firstLoginConfirm','slotsFull'].includes(state.view)){profilePress(key);return;}
         if(state.view==='firstLoginCountdown')return;
@@ -913,30 +948,19 @@
         else if (state.view === 'profile') {
           if (key === 4) { state.view = 'settings'; render(); }
           else if (key === 6) startNameEditor('change');
+        } else if(state.view==='wifiScan'){wifiScanPress(key);
         } else if (state.view === 'network') {
           if (key === 2) state.networkSelection = (state.networkSelection + networkItems.length - 1) % networkItems.length;
           else if (key === 5) state.networkSelection = (state.networkSelection + 1) % networkItems.length;
           else if (key === 4) { state.view = 'settings'; render(); return; }
           else if (key === 6) { chooseNetwork(); return; }
           render();
-        } else if (state.view === 'wifiMethod') {
-          if (key === 2 || key === 5) state.methodSelection = 1 - state.methodSelection;
-          else if (key === 4) { state.view = state.networkSource === 'network' ? 'network' : 'wifiNotSet'; render(); return; }
-          else if (key === 6) {
-            if (state.methodSelection === 0) { state.connectionMethod = 'manual'; startTextEntry('ssid'); }
-            else startPhoneSetup();
-            return;
-          }
-          render();
         } else if (state.view === 'wifiNotSet') {
           if (key === 4) { state.view = 'network'; render(); }
-          else if (key === 6) openWifiMethod(state.networkSource);
+          else if (key === 6) startWifiScan(state.networkSource);
         } else if (state.view === 'textEntry') editWifiText(key);
-        else if (state.view === 'wifiConfirm') {
-          if (key === 4) startTextEntry('password');
-          else if (key === 6) connectWifi(state.manualSSID, state.manualPassword, 'manual');
-        } else if (state.view === 'phoneSetup') {
-          if (key === 4) { state.wifiPower = 'off'; state.connectionMethod = ''; portalPassword.value = ''; state.view = 'wifiMethod'; render(); }
+        else if (state.view === 'phoneSetup') {
+          if (key === 4) { state.wifiPower = 'off'; state.connectionMethod = ''; portalPassword.value = ''; state.view = 'network'; render(); }
         } else if (state.view === 'wifiResult') {
           if (!state.networkError) return;
           if (key === 4) { state.wifiPower = 'off'; state.connectionMethod = ''; state.view = 'network'; render(); }
@@ -1007,7 +1031,6 @@
           suppressClick = false;
           if (state.power !== 'on' || !((state.view === 'textEntry' && (key === 6 ||
               (key === 4 && state.textKind === 'password'))) ||
-            (state.view === 'nameEditor' && state.namePurpose === 'change' && key === 4) ||
             (['buttonTest', 'speakerTest'].includes(state.view) && key === 4))) return;
           suppressClick = false;
           holdTimer = setTimeout(() => {
@@ -1016,14 +1039,13 @@
             if (state.view === 'textEntry' && key === 6) finishTextEntry();
             else if (state.view === 'textEntry' && key === 4 && state.textKind === 'password') {
               state.showPassword = !state.showPassword; render();
-            } else if (state.view === 'nameEditor' && key === 4) { state.view = 'profile'; render(); }
-            else if (['buttonTest', 'speakerTest'].includes(state.view) && key === 4) {
+            } else if (['buttonTest', 'speakerTest'].includes(state.view) && key === 4) {
               stopTimers(); state.testKey = 0; state.view = 'system'; render();
             }
           }, 650);
         });
         ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => el.addEventListener(type, () => {
-          buttonUp(key);
+          if(buttonUp(key))suppressClick=true;
           if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
         }));
         el.addEventListener('click', () => {
@@ -1034,8 +1056,18 @@
       document.addEventListener('keydown', event => {
         if (['INPUT','TEXTAREA','SELECT'].includes(event.target?.tagName)) return;
         if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+        if(event.key==='Escape'&&state.view==='textEntry'&&state.connectionMethod==='scan'){event.preventDefault();state.textBuffer='';state.manualPassword='';state.view='wifiScan';render();return;}
+        if(event.key==='Escape'&&canCancelName()){event.preventDefault();cancelNameEditor();return;}
+        const n=keyboardButton(event);
+        if(n){event.preventDefault();
+          if(n===4&&arcade.active()){keyboardRedHeld=true;keyboardRedHandled=buttonDown(n,()=>{keyboardRedHeld=false;});}
+          else if(n===1){keyboardFirstHeld=true;keyboardFirstHandled=buttonDown(n);}
+          else if(n===3){keyboardThirdHeld=true;keyboardThirdHandled=buttonDown(n);}
+          else if(!buttonDown(n))press(n);
+          return;
+        }
         if(['snakeInput','pongInput'].includes(state.view)){
-          const key={ArrowLeft:1,ArrowUp:2,ArrowRight:3,ArrowDown:5,' ':6}[event.key];
+          const key=(state.view==='snakeInput'?{ArrowLeft:4,ArrowUp:2,ArrowRight:6,ArrowDown:5}:{ArrowLeft:1,ArrowUp:2,ArrowRight:3,ArrowDown:5,' ':6})[event.key];
           if(key){event.preventDefault();if(!buttonDown(key))press(key);return;}
         }
         if (state.view === 'mazeInput') {
@@ -1043,7 +1075,7 @@
           if (key) { event.preventDefault(); press(key); return; }
         }
         if (state.view === 'decoderInput') {
-          const key = { ArrowDown: 4, ArrowLeft: 1, ArrowUp: 6, Backspace: 2, ArrowRight: 3, Enter: 5 }[event.key];
+          const key = { ArrowDown: 5, ArrowLeft: 1, ArrowUp: 2, Backspace: 4, ArrowRight: 3, Enter: 6 }[event.key];
           if (key) { event.preventDefault(); press(key); return; }
         }
         if (['home','modeSelect','pregame'].includes(state.view)) {
@@ -1058,18 +1090,15 @@
           state.showPassword = !state.showPassword; render(); return;
         }
         if (event.key === 'Escape' && arcade.active()) { event.preventDefault(); goHome(); return; }
-        const n=keyboardKeys[event.key.toLowerCase()];
-        if(n){event.preventDefault();
-          if(n===4&&arcade.active()){keyboardRedHeld=true;keyboardRedHandled=buttonDown(n,()=>{keyboardRedHeld=false;});}
-          else if(!buttonDown(n))press(n);
-        }
       });
       document.addEventListener('keyup', event => {
-        const n=keyboardKeys[event.key.toLowerCase()]||({ArrowLeft:1,ArrowRight:3,ArrowUp:2,ArrowDown:5,' ':6})[event.key];if(!n)return;
-        const red=keyboardRedHeld;buttonUp(n);
-        if(n===4&&red){keyboardRedHeld=false;if(!keyboardRedHandled)press(n);keyboardRedHandled=false;}
+        const n=keyboardButton(event)||(state.mode==='snake'?{ArrowLeft:4,ArrowRight:6,ArrowUp:2,ArrowDown:5}:{ArrowLeft:1,ArrowRight:3,ArrowUp:2,ArrowDown:5,' ':6})[event.key];if(!n)return;
+        const red=keyboardRedHeld,third=keyboardThirdHeld,first=keyboardFirstHeld,consumed=buttonUp(n);
+        if(n===4&&red){keyboardRedHeld=false;if(!consumed&&!keyboardRedHandled)press(n);keyboardRedHandled=false;}
+        if(n===1&&first){keyboardFirstHeld=false;if(!consumed&&!keyboardFirstHandled)press(n);keyboardFirstHandled=false;}
+        if(n===3&&third){keyboardThirdHeld=false;if(!consumed&&!keyboardThirdHandled)press(n);keyboardThirdHandled=false;}
       });
-      window.addEventListener?.('blur', () => {powerKeys=0;if(menuRepeat)clearTimeout(menuRepeat);menuRepeat=null;keyboardRedHeld=false;cancelExitHold();for(let n=1;n<=6;n++)arcade.keyUp(n);});
+      window.addEventListener?.('blur', () => {clearNameCancelHold();powerKeys=0;keyboardThirdHeld=false;keyboardFirstHeld=false;menuRepeated=0;shutdownConsumed=0;checkShutdownShortcut();if(menuRepeat)clearTimeout(menuRepeat);menuRepeat=null;keyboardRedHeld=false;cancelExitHold();for(let n=1;n<=6;n++)arcade.keyUp(n);});
       render();
     })();
   </script>

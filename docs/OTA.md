@@ -2,12 +2,14 @@
 
 Repo publik: [ibnusina339/Remora](https://github.com/ibnusina339/Remora). Perangkat tidak menyimpan token GitHub.
 
-1. Sambungkan Wi-Fi lewat Settings → Network → Phone Setup atau input manual. Password boleh kosong untuk jaringan terbuka.
+1. Sambungkan Wi-Fi lewat Settings → Network → SCAN WIFI, pilih jaringan lalu isi password jika terkunci. Jaringan terbuka tidak memerlukan password. Pada firmware lama v0.1.0, gunakan Phone Setup atau input manual untuk menyambung sebelum memperbarui.
 2. Pilih OTA Update. Pengecekan memakai GitHub API release stabil terbaru.
 3. Jika versi lebih baru tersedia dan baterai minimal 30%, hijau memasang update.
 4. Firmware masuk slot aplikasi yang tidak aktif. Boot slot baru dipilih setelah seluruh verifikasi lolos.
 
 Captive portal tidak mengatasi halaman login Wi-Fi publik. Jaringan tanpa password dapat langsung dipakai bila menyediakan koneksi internet tanpa portal tambahan. Wi-Fi membutuhkan DNS/HTTPS GitHub yang dapat diakses. Waktu perangkat disinkronkan melalui SNTP sebelum HTTPS; jika NTP tidak terjangkau, perangkat meminta mencoba lagi. TLS memverifikasi sertifikat lewat CA bundle.
+
+**Mulai v0.1.1:** Settings → Network membuka menu tanpa memindai otomatis. Pilih SCAN WIFI, lalu pilih jaringan dan isi password hanya jika terkunci. Jaringan terbuka langsung disambungkan. Input nama Wi-Fi manual pada perangkat dihapus; Phone Setup, koneksi tersimpan dan OTA tetap tersedia pada menu Network. Simulator memakai daftar jaringan contoh berlabel SIMULASI; firmware ESP32 melakukan pemindaian asli. Pengujian pada perangkat fisik tetap diperlukan.
 
 ## Versi dan berkas
 
