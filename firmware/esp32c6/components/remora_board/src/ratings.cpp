@@ -35,3 +35,5 @@ std::vector<std::string> ratingReport(const RatingRecord&r){
  else for(int i=0;i<5;i++){rows.push_back(RatingQuestions[i]);rows.push_back("STARS:"+std::to_string(r.stars[i]));}
  return rows;
 }
+
+} // namespace remora
