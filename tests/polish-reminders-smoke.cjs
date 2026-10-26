@@ -8,21 +8,7 @@ shot();app.press(6);assert.equal(app.state().view,'ratingStars');app.press(3);ap
 // Global setting is visible only in XDAXA and survives a reload / profile switch.
 app.show({view:'profiles',profileSelection:5});app.press(6);app.press(3);app.press(3);app.press(3);app.show({view:'settings',selection:10});app.press(6);assert.equal(app.state().view,'ratingPromptSettings');shot();app.press(1);assert.equal(app.state().ratePromptEnabled,false);app.press(4);assert.equal(app.state().view,'settings');
 const reload=launch(app.store);reload.boot();assert.equal(reload.state().ratePromptEnabled,false);assert.notEqual(reload.state().activeProfile,5);
-// The independent scheduler tests ten-minute cooldown without running thousands of UI frames.
-const sandbox={window:{RemoraArcade:{catalog:[{mode:'classic'},{mode:'reverse'},{mode:'snake'}]}}};vm.createContext(sandbox);vm.runInContext(fs.readFileSync('assets/remora-ratings.js','utf8'),sandbox);
-const data={},storage={getItem:k=>data[k]||null,setItem:(k,v)=>data[k]=v},s={playerId:'A',playerName:'PLAYER',activeProfile:0,mode:'classic',view:'gameover'},queue=[],cues=[];let now=0;
-const rating=sandbox.window.RemoraRatings.create({state:s,storage,profiles:{},render(){},save(){},home(){s.view='home';},now:()=>now,later:fn=>queue.push(fn),sfx:n=>cues.push(n)});
-const finish=(mode='classic',score=700,clears=2)=>{s.mode=mode;s.view='gameover';rating.gameOver({mode,score,clears,newRecord:false});};
-finish();finish();assert.equal(queue.length,0);finish();assert.equal(queue.length,1);queue.shift()();assert.equal(s.view,'ratingInvite');assert.ok(cues.includes('invite'));rating.press(4);
-now=700000;for(let i=0;i<5;i++)finish('reverse');assert.equal(queue.length,0);finish('reverse');assert.equal(queue.length,1);queue.shift()();rating.press(4);
-for(let i=0;i<9;i++)finish('snake');assert.equal(queue.length,0,'cooldown ignored');now+=600001;finish('snake');assert.equal(queue.length,1);
-s.activeProfile=5;s.developerUnlocked=true;rating.openPromptSettings();rating.press(1);s.activeProfile=0;s.view='gameover';queue.shift()();assert.equal(s.view,'gameover','disabled pending invite still appeared');finish('classic');assert.equal(queue.length,0);
-s.activeProfile=5;s.developerUnlocked=true;rating.openPromptSettings();rating.press(3);s.activeProfile=0;finish('classic');assert.equal(queue.length,0,'same player/game was prompted twice');
-// Already-rated games and developer gameplay never prompt.
-const rated={...s,playerId:'RATED',view:'gameover',mode:'classic',activeProfile:0},ratedQueue=[];
-data['remora-ratings']=JSON.stringify([{id:1,profileId:'RATED',profileName:'R',game:0,stars:[5],suggestions:0}]);
-const r2=sandbox.window.RemoraRatings.create({state:rated,storage,render(){},save(){},profiles:{},home(){},now:()=>now,later:f=>ratedQueue.push(f)});for(let i=0;i<10;i++)r2.gameOver({mode:'classic',score:900,clears:4});assert.equal(ratedQueue.length,0);
-rated.activeProfile=5;rated.developerUnlocked=true;rated.playerId='XDAXA';for(let i=0;i<10;i++)r2.gameOver({mode:'reverse',score:900,clears:4});assert.equal(ratedQueue.length,0);
+require('./rating-shared-profile-smoke.cjs');
 // MONO persists, keeps useful color cues, and pregame header contains only battery UI.
 app.show({view:'profiles',profileSelection:0});app.press(6);app.press(6);app.show({view:'theme',theme:'OCEAN'});app.press(3);assert.equal(app.state().theme,'MONO');app.press(4);
 app.show({view:'pregame',modeSelection:4,theme:'MONO',display:100});shot();for(let y=6;y<22;y++)for(let x=10;x<210;x++){const p=(y*320+x)*3;assert.deepEqual([...app.pixels.subarray(p,p+3)],[16,16,16]);}

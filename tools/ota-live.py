@@ -4,9 +4,10 @@ import argparse,hashlib,json,os,ssl,struct,urllib.request
 
 parser=argparse.ArgumentParser();parser.add_argument('--out',required=True);parser.add_argument('--api',default='https://api.github.com/repos/ibnusina339/Remora/releases/latest');args=parser.parse_args()
 dest=Path(args.out);dest.mkdir(parents=True,exist_ok=True)
-HEADERS={'User-Agent':'Remora-ESP32C6','Accept':'application/json'}
+HEADERS={'User-Agent':'Remora-ESP32C6'}
 def get(url,limit):
  headers=dict(HEADERS)
+ headers['Accept']='application/vnd.github+json' if url.startswith('https://api.github.com/') else 'application/octet-stream'
  # CI may authenticate metadata requests to avoid shared-runner rate limits.
  if url.startswith('https://api.github.com/') and os.environ.get('OTA_FIXTURE_TOKEN'):headers['Authorization']='Bearer '+os.environ['OTA_FIXTURE_TOKEN']
  with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=45,context=ssl.create_default_context()) as response:

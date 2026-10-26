@@ -26,6 +26,17 @@ Pesan akhir: "terimakasih sudah kasih rating buat Remora, segala masukan sangat 
 
 ## Ajakan setelah game over (v0.3.0)
 
-Ajakan opsional menunggu 2,8 detik setelah game over. Pemain bisa memilih Nanti atau menilai game yang baru dimainkan; setelah selesai kembali ke hasil game. Muncul setelah minimal tiga game berakhir dan hasil cukup berarti (dua level selesai, skor 600, atau rekor baru dengan satu level selesai). Di antara ajakan perlu enam game over dan cooldown sepuluh menit pada sesi penyalaan yang sama. Satu profil/game hanya diminta sekali; game yang sudah dinilai, profil XDAXA, dan arsip yang penuh tidak memicu ajakan.
+Ajakan opsional menunggu 2,8 detik setelah game over. Pemain bisa memilih Nanti atau menilai game yang baru dimainkan; setelah selesai kembali ke hasil game. Perlu minimal tiga game berakhir dan hasil cukup berarti: dua level selesai, skor 600, rekor baru dengan satu level selesai, atau perubahan performa konsisten seperti di bawah. Antara semua ajakan tetap perlu minimal enam game over dan sepuluh menit.
+
+Profil bersama bisa mendapat ajakan berulang, termasuk game yang sudah dinilai. Tidak ada lagi batas sekali seumur profil/game. Setiap pengiriman menjadi Rate baru; rating sebelumnya tetap utuh, dengan nama dan ID profil yang sama.
+
+- Ajakan berkala pada game/profil yang sama: minimal 12 game tambahan dan 30 menit sejak ajakan atau rating terakhir.
+- Jalur perubahan performa: bandingkan rata-rata tiga hasil terkini dengan tiga hasil baseline pada game dan difficulty yang sama. Perlu selisih minimal 600 poin per game serta perubahan minimal dua kali lipat, ke atas maupun ke bawah. Satu hasil menyimpang tidak cukup.
+- Bila perubahan terdeteksi, ajakan boleh muncul setelah enam game tambahan dan sepuluh menit. Hasil rendah juga boleh mendapat ajakan jika penurunan konsisten terdeteksi. Petunjuk perubahan kedaluwarsa setelah enam hasil berikutnya.
+- Ganti difficulty memulai ulang pembandingan skor; hasil antar-game dan antar-profil tidak dicampur. Baseline menyesuaikan perlahan untuk perubahan kecil.
+- Rating manual juga mengatur ulang jeda ajakan game tersebut. Rate Me manual tetap dapat digunakan kapan saja, tanpa menunggu jeda.
+- XDAXA dan arsip penuh tidak memicu ajakan. Riwayat jumlah game dan baseline disimpan; timer memakai uptime sehingga direset ketika perangkat benar-benar dinyalakan ulang. Jumlah game yang diwajibkan tetap berlaku setelah restart.
+
+**Perubahan skor hanya petunjuk untuk mengundang feedback, bukan identifikasi orang.** Pemain yang sama dapat meningkat atau menurun; pemain berbeda dapat memiliki skor mirip. Catatan tidak dilabeli sebagai individu berbeda secara otomatis.
 
 Masuk XDAXA > Settings > RATING PROMPT. Ungu mematikan dan kuning mengaktifkan ajakan untuk semua profil. Pilihan tersimpan pada pengaturan perangkat, bukan preferensi per profil. Rate Me tetap dapat digunakan ketika ajakan dimatikan. Keluar atau Retry sebelum ajakan tampil membatalkan ajakan tertunda.

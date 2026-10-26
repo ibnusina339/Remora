@@ -13,6 +13,7 @@ inline constexpr int Keys[]={1,2,3,4,6,7};
 inline constexpr int HoldPin=14,PeripheralPin=15,UsbPin=8,AdcPin=0,AudioPin=16,VibrationPin=17,TftClock=18,TftMosi=19,TftDc=20,TftReset=5;
 inline constexpr int UserProfileCount=5,DeveloperSlot=5,ProfileCount=6;
 struct UserProfile {
+ RatingPlayStats ratingPlay[GameCount];
  uint32_t id=0;bool used=false,tutorialDone=false;uint8_t difficulty[GameCount]{};int records[GameCount][5]{};uint32_t phraseCounters[GameCount]{};
  int master=70,bgm=35,sfx=75,brightness=100,leds=60;bool ocean=false,mono=false;uint16_t ratingAsked=0;char player[8]="PLAYER";uint32_t games=0,wins=0;
 };

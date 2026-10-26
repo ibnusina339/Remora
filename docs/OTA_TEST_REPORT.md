@@ -15,7 +15,7 @@ Pengunduhan di komputer ini dilakukan **tanpa token**, dengan validasi sertifika
 
 Pengujian mengompilasi sumber `ota.cpp` produksi, mengganti batas ESP-IDF berupa HTTP, FreeRTOS, SNTP dan flash dengan I/O terkontrol. JSON memakai cJSON dan hash dihitung sungguhan dengan OpenSSL. Ini bukan implementasi OTA kedua.
 
-[Baseline](https://github.com/ibnusina339/Remora/actions/runs/40292336345): 29 lolos, 11 gagal. [Setelah perbaikan awal](https://github.com/ibnusina339/Remora/actions/runs/40292642126): 40 lolos, 0 gagal. Tiga kasus tambahan memeriksa magic image, Wi-Fi putus tepat sebelum install, serta cancel saat memeriksa release; hasil final dilaporkan workflow build/release.
+[Baseline](https://github.com/ibnusina339/Remora/actions/runs/40292336345): 29 lolos, 11 gagal. [Setelah perbaikan awal](https://github.com/ibnusina339/Remora/actions/runs/40292642126): 40 lolos, 0 gagal. [Build lengkap dengan 43 skenario](https://github.com/ibnusina339/Remora/actions/runs/40293072591) lulus, termasuk magic image, Wi-Fi putus tepat sebelum install, serta cancel saat memeriksa release.
 
 Kasus yang dicakup:
 

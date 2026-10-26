@@ -75,7 +75,7 @@
       const feedback=root.RemoraFeedback.loss(s.mode,s.score,s.clears,newRecord,variant);
       s.message=feedback.title;s.endMessage=feedback.line;s.feedbackTier=feedback.tier;
       if(value!==null)remember(value);
-      host.gameOver?.({mode:s.mode,score:s.score,clears:s.clears,newRecord});
+      host.gameOver?.({mode:s.mode,difficulty:s.difficulty,score:s.score,clears:s.clears,newRecord});
       draw();host.say(reason+'. '+s.message+'. Skor '+s.score);
     }
     function start(mode){

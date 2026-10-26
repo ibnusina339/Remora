@@ -9,20 +9,48 @@
   try{const value=JSON.parse(host.storage.getItem('remora-ratings')||'[]');if(Array.isArray(value))records=value;}catch(_){}
   s.developerUnlocked=false;
   const developer=()=>s.activeProfile===5&&s.developerUnlocked;
-  let policy={enabled:true,completed:0,lastPromptGame:0,asked:{}},lastPromptAt=-Infinity,rateReturn=null;
-  try{const saved=JSON.parse(host.storage.getItem('remora-rating-policy'));if(saved&&typeof saved==='object')policy={...policy,...saved,asked:saved.asked||{}};}catch(_){}
+  let policy={enabled:true,completed:0,lastPromptGame:0,asked:{},play:{}},lastPromptAt=-Infinity,rateReturn=null,askTimes={};
+  try{const saved=JSON.parse(host.storage.getItem('remora-rating-policy'));if(saved&&typeof saved==='object')policy={...policy,...saved,asked:saved.asked||{},play:saved.play||{}};}catch(_){}
   s.ratePromptEnabled=policy.enabled!==false;
   const policyWrite=()=>{try{host.storage.setItem('remora-rating-policy',JSON.stringify(policy));return true;}catch(_){return false;}};
   const sfx=name=>host.sfx?.(name);
   function openPromptSettings(){if(!developer())return;s.ratePromptEnabled=policy.enabled!==false;s.view='ratingPromptSettings';host.render();}
+  // A lane belongs to a profile/game. Difficulty changes restart score comparison.
+  const laneFor=(profile,game)=>{
+   const key=profile+':'+game;
+   return policy.play[key]||(policy.play[key]={games:0,lastAsk:0,changeAt:0,difficulty:-1,baseline:0,recent:0,baselineCount:0,recentCount:0,prompted:false});
+  };
+  const changed=lane=>!!lane.changeAt&&lane.games>=lane.changeAt&&lane.games-lane.changeAt<6;
+  function observe(lane,difficulty,score){
+   lane.games++;
+   if(lane.difficulty!==difficulty)Object.assign(lane,{difficulty,baseline:0,recent:0,baselineCount:0,recentCount:0,changeAt:0});
+   score=Math.min(10000000,Math.max(0,Math.round(score||0)));
+   if(lane.baselineCount<3){lane.baseline+=score;lane.baselineCount++;return;}
+   lane.recent+=score;if(++lane.recentCount<3)return;
+   if(Math.abs(lane.baseline-lane.recent)>=1800&&(lane.recent>=lane.baseline*2||lane.baseline>=lane.recent*2)){
+    lane.changeAt=lane.games;lane.baseline=lane.recent;
+   }else lane.baseline=Math.floor((lane.baseline*3+lane.recent)/4);
+   lane.recent=0;lane.recentCount=0;
+  }
+  function markAsked(lane,key){
+   Object.assign(lane,{prompted:true,lastAsk:lane.games,changeAt:0});askTimes[key]=host.now();
+   policy.lastPromptGame=policy.completed;lastPromptAt=host.now();
+  }
   function gameOver(info){
-   const game=root.RemoraArcade.catalog.findIndex(g=>g.mode===info.mode),key=s.playerId+':'+game;
-   policy.completed++;if(!policyWrite())return;
-   const eligible=()=>policy.enabled!==false&&game>=0&&records.length<64&&!developer()&&!policy.asked[key]&&!records.some(r=>r.profileId===s.playerId&&r.game===game)&&policy.completed>=3&&(!policy.lastPromptGame||policy.completed-policy.lastPromptGame>=6)&&host.now()-lastPromptAt>=600000&&(info.clears>=2||info.score>=600||(info.newRecord&&info.clears>=1));
+   const game=root.RemoraArcade.catalog.findIndex(g=>g.mode===info.mode);
+   if(game<0)return;
+   const profile=s.playerId,key=profile+':'+game,lane=laneFor(profile,game);
+   observe(lane,info.difficulty??s.difficulty??1,info.score);policy.completed++;if(!policyWrite())return;
+   const eligible=()=>{
+    const change=changed(lane),gap=lane.games-lane.lastAsk;
+    const repeatReady=!lane.prompted||(gap>=(change?6:12)&&(askTimes[key]===undefined||host.now()-askTimes[key]>=(change?600000:1800000)));
+    const meaningful=info.clears>=2||info.score>=600||(info.newRecord&&info.clears>=1)||change;
+    return s.playerId===profile&&policy.enabled!==false&&records.length<64&&!developer()&&repeatReady&&meaningful&&policy.completed>=3&&(!policy.lastPromptGame||policy.completed-policy.lastPromptGame>=6)&&host.now()-lastPromptAt>=600000;
+   };
    if(!eligible())return;
    host.later?.(()=>{
     if(s.view!=='gameover'||s.mode!==info.mode||!eligible())return;
-    policy.asked[key]=true;policy.lastPromptGame=policy.completed;if(!policyWrite())return;lastPromptAt=host.now();s.rateInviteGame=game;s.view='ratingInvite';sfx('invite');host.render();
+    markAsked(lane,key);if(!policyWrite())return;s.rateInviteGame=game;s.view='ratingInvite';sfx('invite');host.render();
    },2800);
   }
 
@@ -41,7 +69,7 @@
    if(records.length>=64){s.rateHint='ARSIP PENUH. HUBUNGI DEVELOPER';return;}
    const record={id:records.reduce((n,r)=>Math.max(n,r.id||0),0)+1,profileId:s.playerId,profileName:s.playerName,game:s.rateKind,stars,suggestions:s.rateSuggestions};
    const next=[...records,record];
-   try{host.storage.setItem('remora-ratings',JSON.stringify(next));records=next;s.view='ratingThanks';s.rateHint='';sfx('ratingSaved');}catch(_){s.rateHint='GAGAL SIMPAN. COBA LAGI';}
+   try{host.storage.setItem('remora-ratings',JSON.stringify(next));records=next;if(s.rateKind>=0)markAsked(laneFor(s.playerId,s.rateKind),s.playerId+':'+s.rateKind);else{policy.lastPromptGame=policy.completed;lastPromptAt=host.now();}policyWrite();s.view='ratingThanks';s.rateHint='';sfx('ratingSaved');}catch(_){s.rateHint='GAGAL SIMPAN. COBA LAGI';}
   }
   function statsKey(key){
    if(!developer()){resultCount=0;return false;}

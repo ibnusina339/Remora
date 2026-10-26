@@ -43,17 +43,27 @@ static int devTaps=0,resultTaps=0;static int64_t devTapAt=-2001,resultTapAt=-200
 static bool developer(){return prefs.active==DeveloperSlot&&ui.developerUnlocked;}
 static bool ratingInviteEligible(int64_t t){
  auto&s=game.s;bool record=s.recordAtStart>=0&&s.score>s.recordAtStart;
- if(!prefs.ratingPrompt.eligible(s.score,s.clears,record,false,bool(prefs.ratingAsked&(1<<s.mode)),developer(),t)){return false;}
- auto records=loadRatings();if(records.size()>=RatingLimit){return false;}
- return std::none_of(records.begin(),records.end(),[&](const auto&r){return r.owner==prefs.id&&r.game==s.mode;});
+ if(!prefs.ratingPrompt.eligible(s.score,s.clears,record,developer(),t,prefs.ratingPlay[s.mode]))return false;
+ return loadRatings().size()<RatingLimit;
 }
 static void ratingGameOverTick(int64_t t){
- if(ui.power!=PowerPhase::Play){return;}
- if(ui.view==View::Playing&&game.s.phase==Phase::Over&&!gameOverSeen){gameOverSeen=true;prefs.ratingPrompt.completed++;if(ratingInviteEligible(t)){ui.rateInviteMode=game.s.mode;ui.rateInviteAt=t+2800;}dirty=true;}
- if(ui.rateInviteAt&&t>=ui.rateInviteAt){ui.rateInviteAt=0;if(ui.view==View::Playing&&game.s.phase==Phase::Over&&ratingInviteEligible(t)){prefs.ratingAsked|=1<<game.s.mode;prefs.ratingPrompt.shown(t);persist();ui.view=View::RateInvite;audioEffect("invite");}}
+ if(ui.power!=PowerPhase::Play)return;
+ if(ui.view==View::Playing&&game.s.phase==Phase::Over&&!gameOverSeen){
+  gameOverSeen=true;prefs.ratingPrompt.completed++;
+  prefs.ratingPlay[game.s.mode].observe(game.s.difficulty,game.s.score);
+  if(ratingInviteEligible(t)){ui.rateInviteMode=game.s.mode;ui.rateInviteAt=t+2800;}
+  dirty=true;
+ }
+ if(ui.rateInviteAt&&t>=ui.rateInviteAt){
+  ui.rateInviteAt=0;
+  if(ui.view==View::Playing&&game.s.phase==Phase::Over&&ratingInviteEligible(t)){
+   prefs.ratingPlay[game.s.mode].shown(t);prefs.ratingPrompt.shown(t);persist();
+   ui.view=View::RateInvite;audioEffect("invite");
+  }
+ }
 }
 
-static void ratingSave(){RatingRecord record;record.owner=prefs.id;record.name=prefs.player;record.game=ui.rateKind;record.stars=ui.rateStars;record.suggestions=ui.rateTips;if(saveRating(record)){ui.status.clear();ui.view=View::RatingThanks;audioEffect("ratingSaved");}else ui.status="GAGAL SIMPAN / ARSIP PENUH";}
+static void ratingSave(){RatingRecord record;record.owner=prefs.id;record.name=prefs.player;record.game=ui.rateKind;record.stars=ui.rateStars;record.suggestions=ui.rateTips;if(saveRating(record)){if(record.game>=0)prefs.ratingPlay[record.game].shown(now());prefs.ratingPrompt.shown(now());persist();ui.status.clear();ui.view=View::RatingThanks;audioEffect("ratingSaved");}else ui.status="GAGAL SIMPAN / ARSIP PENUH";}
 static void ratingStart(int kind,bool fromInvite=false){ui.rateFromInvite=fromInvite;ui.rateKind=kind;ui.rateStep=0;ui.rateStars.fill(0);ui.rateTips=0;ui.status.clear();ui.view=View::RatingStars;}
 static bool ratingPress(int key){
  if(ui.view==View::DevGate){if(key==4)ui.view=View::Profiles;else if(key==3){devTaps=now()-devTapAt<2000?devTaps+1:1;devTapAt=now();if(devTaps==3){switchProfile(prefs,DeveloperSlot,true);ui.developerUnlocked=true;devTaps=0;home();}}else devTaps=0;return true;}

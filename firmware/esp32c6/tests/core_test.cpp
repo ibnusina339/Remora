@@ -1,5 +1,5 @@
 #include "power_policy.hpp"
-#include "rating_prompt.hpp"
+#include "rating_prompt_test.hpp"
 #include "semver.hpp"
 #include "game_engine.hpp"
 #include <cassert>
@@ -10,5 +10,5 @@ static void solve(GameEngine&e){for(int tries=0;tries<100000;tries++){auto&s=e.s
 int main(){auto v=SemVer::parse("1.10.0"),old=SemVer::parse("1.9.9");assert(v.valid&&v.compare(old)>0);assert(!SemVer::parse("01.2.3").valid);assert(SemVer::parse("1.0.0-alpha.2").compare(SemVer::parse("1.0.0-alpha.10"))<0);assert(SemVer::parse("1.0.0+build").compare(SemVer::parse("1.0.0"))==0);PowerPolicy p;PowerInput i{false,50,0,false};assert(p.begin(0,i)==PowerPhase::Standby);i.keys=5;p.update(10,i);assert(p.update(2010,i)==PowerPhase::Play);i.usb=true;i.percent=80;assert(p.update(2020,i)==PowerPhase::ChargeNotice);assert(p.update(4020,i)==PowerPhase::Standby);for(int g=0;g<GameCount;g++)for(int d=0;d<5;d++){GameEngine e;e.start(g,d);solve(e);assert(e.s.score>0);}GameEngine decoder;std::vector<int>bits;decoder.sound=[&](const char*name){if(!std::strcmp(name,"high"))bits.push_back(1);else if(!std::strcmp(name,"low"))bits.push_back(0);};decoder.start(8,0,37);while(decoder.s.phase!=Phase::DecoderInput)decoder.advance(10);assert(bits.size()==4);int decoded=0;for(int bit:bits)decoded=decoded*2+bit;assert(decoded==decoder.s.answers[0]);
 
 for(int d=0;d<5;d++)for(int dir:{1,2,3,5}){GameEngine e;e.start(9,d,37);auto&s=e.s;int head=dir==1?6*s.cols:dir==3?7*s.cols-1:dir==2?5:(s.rows-1)*s.cols+5;int expected=dir==1?7*s.cols-1:dir==3?6*s.cols:dir==2?(s.rows-1)*s.cols+5:5;s.body={head};s.rocks.clear();s.food=3*s.cols+10;s.dir=s.nextDir=dir;e.advance(s.tickMs);if(d<3){assert(s.phase==Phase::Snake);assert(s.body[0]==expected);}else assert(s.phase==Phase::Over);}
-RatingPromptPolicy rp;rp.completed=2;assert(!rp.eligible(800,3,false,false,false,false,0));rp.completed=3;assert(rp.eligible(800,3,false,false,false,false,0));rp.shown(0);rp.completed=9;assert(!rp.eligible(800,3,false,false,false,false,599999));assert(rp.eligible(800,3,false,false,false,false,600000));assert(!rp.eligible(800,3,false,true,false,false,600000));assert(!rp.eligible(800,3,false,false,true,false,600000));assert(!rp.eligible(800,3,false,false,false,true,600000));assert(!rp.eligible(0,0,false,false,false,false,600000));rp.enabled=false;assert(!rp.eligible(800,3,false,false,false,false,600000));
+testRatingPrompts();
 std::cout<<"Native core: all 11 games x 5 presets, power policy and SemVer OK\n";}
