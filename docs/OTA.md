@@ -22,7 +22,7 @@ Workflow tag `v0.1.0` harus cocok dengan VERSION. Rilis menyertakan:
 - `manifest.json`: versi, board `esp32c6-supermini-k2`, ukuran, SHA-256 dan schema userdata.
 - `FLASHING.md`: petunjuk pemasangan.
 
-Pemeriksaan meliputi URL aset dari repo ini, SemVer, identitas board, nama proyek pada app descriptor, ukuran, SHA-256 dan validasi image ESP-IDF. SHA-256 mendeteksi kerusakan; ini **belum firmware signing/Secure Boot**. Akses penerbit repo menentukan firmware yang dipercaya.
+Pemeriksaan meliputi URL aset yang persis cocok dengan repo dan tag rilis ini, SemVer, identitas board, nama proyek pada app descriptor, ukuran, SHA-256 dan validasi image ESP-IDF. SHA-256 mendeteksi kerusakan; ini **belum firmware signing/Secure Boot**. Akses penerbit repo menentukan firmware yang dipercaya.
 
 Jika unduhan gagal/terputus, image aktif tidak diganti. Bootloader rollback diaktifkan. Image baru dikonfirmasi setelah inisialisasi NVS, input/ADC, alokasi framebuffer dan transfer LCD awal berhasil; ini tidak menguji tampilan secara visual. Profil berada di partisi terpisah dan tidak dihapus OTA.
 
@@ -36,3 +36,11 @@ Jika unduhan gagal/terputus, image aktif tidak diganti. Bootloader rollback diak
 Jangan mengganti peta partisi pada update biasa. Perubahan schema harus membaca data lama dan mempertahankan nilai yang sudah ada. Lihat [PROFILES.md](PROFILES.md).
 
 Implementasi waktu mengikuti [ESP-NETIF SNTP ESP-IDF 5.5.2](https://docs.espressif.com/projects/esp-idf/en/v5.5.2/esp32c6/api-reference/network/esp_netif_programming.html#sntp-service).
+
+## Pengujian otomatis
+
+[Laporan pengujian OTA](OTA_TEST_REPORT.md) menjelaskan hasil dan batas pengujian. `tests/ota_host/ota_test.cpp` mengompilasi `ota.cpp` produksi dengan pengganti untuk jaringan, task dan flash; JSON serta SHA-256 memakai pustaka asli di host. Tes ini merupakan syarat penerbitan release, bersama tes core dan build ESP-IDF.
+
+Uji akses publik tanpa token: `python tools/ota-live.py --out tmp/ota-live`. Skrip mengunduh metadata, manifest dan binary aktual melalui HTTPS, lalu memeriksa ukuran, SHA-256, board serta app descriptor. Ini memerlukan internet. CI boleh memakai token hanya untuk metadata fixture agar tidak terkena kuota bersama runner; perangkat tetap tanpa token.
+
+Tes host menggunakan Ubuntu dengan `g++`, `libcjson-dev` dan `libssl-dev`; perintah lengkap tersedia di `.github/workflows/ota-regression.yml`. Sanitizer memeriksa kesalahan memori dan perilaku tidak terdefinisi. Pengganti I/O tidak membuktikan keandalan Wi-Fi, daya, flash atau rollback bootloader pada papan fisik.

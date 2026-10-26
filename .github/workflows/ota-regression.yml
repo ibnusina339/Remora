@@ -1,0 +1,24 @@
+name: OTA regression tests
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ota:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install host test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y libcjson-dev libssl-dev
+      - name: Download published fixture over HTTPS
+        env:
+          OTA_FIXTURE_TOKEN: ${{ github.token }}
+        run: python tools/ota-live.py --api https://api.github.com/repos/ibnusina339/Remora/releases/tags/v0.2.0 --out /tmp/ota-fixture
+      - name: Run production updater against fault-injected I/O
+        run: |
+          g++ -std=gnu++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+            -I tests/ota_host/stubs -I /usr/include/cjson -I firmware/esp32c6/components/remora_core/include \
+            tests/ota_host/ota_test.cpp firmware/esp32c6/components/remora_core/src/semver.cpp \
+            -Wl,--wrap=time -lcjson -lcrypto -o /tmp/remora-ota-test
+          /tmp/remora-ota-test /tmp/ota-fixture
