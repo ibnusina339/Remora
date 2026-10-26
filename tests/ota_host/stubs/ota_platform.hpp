@@ -41,13 +41,13 @@ inline std::vector<std::function<void()>> tasks;
 inline esp_partition_t partition;
 inline esp_app_desc_t current;
 inline std::vector<uint8_t> written;
-inline int clients=0,begin=0,end=0,abort=0,boot=0,restarts=0,reads=0,insecure=0;
+inline int clients=0,begin=0,end=0,aborts=0,boot=0,restarts=0,reads=0,insecure=0;
 inline bool wifi=true,taskOk=true,initOk=true,partOk=true,beginOk=true,writeOk=true,endOk=true,bootOk=true;
 inline bool flashActive=false,ntpOk=true;
 inline time_t clock=1800000000;
 inline std::function<void()> cancel;
 // OTA mock only accepts the inactive app partition. There is no userdata erase API.
-inline const std::string userdata="profile-records-ratings-sentinel";
+
 inline void require(bool ok,const char* message) { if(!ok)throw std::runtime_error(message); }
 inline void run() { while(!tasks.empty()){auto task=tasks.front();tasks.erase(tasks.begin());task();} }
 }
@@ -75,8 +75,8 @@ inline int esp_ota_end(esp_ota_handle_t) {
  fixture::flashActive=false;++fixture::end;return fixture::endOk?ESP_OK:ESP_FAIL;
 }
 inline int esp_ota_abort(esp_ota_handle_t) {
- fixture::require(fixture::flashActive,"abort after esp_ota_end freed handle");
- fixture::flashActive=false;++fixture::abort;return ESP_OK;
+ fixture::require(fixture::flashActive,"aborts after esp_ota_end freed handle");
+ fixture::flashActive=false;++fixture::aborts;return ESP_OK;
 }
 inline int esp_ota_set_boot_partition(const esp_partition_t* p) {
  fixture::require(p==&fixture::partition,"wrong boot partition");++fixture::boot;return fixture::bootOk?ESP_OK:ESP_FAIL;
