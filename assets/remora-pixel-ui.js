@@ -196,6 +196,8 @@
     }
     function ratingView(v){
       const content=root.RemoraRatings;
+      if(v==='ratingInvite'){header('RATE GAME?');smallText(catalog[s.rateInviteGame].name,160,43,P.dim,'center');ratingStars(0,160,64,1);text('TOLONG BERI RATE',160,99,2,P.paper,'center');text('GAME INI',160,121,2,P.paper,'center');smallText('MASUKANMU BANTU REMORA',160,162,P.dim,'center');smallText('BOLEH LEWATI DAN MAIN LAGI',160,186,P.dim,'center');footer([null,null,null,'NANTI',null,'BERI RATE']);return;}
+      if(v==='ratingPromptSettings'){detail('RATING PROMPT',s.ratePromptEnabled?'ON':'OFF','BERLAKU UNTUK SEMUA PEMAIN','stats',['OFF',null,'ON','BACK',null,'BACK']);return;}
       if(v==='rateMenu')list('RATE ME',['RATE GAME','RATE REMORA'],s.rateSelection);
       else if(v==='rateGames')list('PILIH GAME',catalog.map(g=>g.name),s.rateSelection);
       else if(v==='devGate'){header('XDAXA');catSprite('sit',160,112,false,.65);text('AKSES DEVELOPER',160,134,2,P.paper,'center');smallText('MASUKKAN KODE AKSES',160,169,P.dim,'center');footer([null,null,null,'BACK']);}
@@ -314,7 +316,7 @@
     }
     function record(){const key=catalog[s.modeSelection]?.mode+':'+s.difficulty;return s.records[key];}
     function pregame(){
-      const i=s.modeSelection,r=record(),reaction=catalog[i].mode==='reaction';header('READY TO PLAY',games[i]);
+      const i=s.modeSelection,r=record(),reaction=catalog[i].mode==='reaction';header('');
       text(games[i],14,39,2,P.paper);smallText('DIFFICULTY',14,68,P.dim);
       rect(11,83,182,59,P.panel);frame(11,83,182,59,P.amber,2);arrow(21,102,-1,s.difficulty>0?P.purple:P.line);arrow(173,102,1,s.difficulty<4?P.yellow:P.line);
       text(levels[s.difficulty],103,94,2,P.amber,'center');
@@ -508,9 +510,9 @@
     }
     function draw(state){
       s=state;nav=[];
-      const ocean=s.theme==='OCEAN';
-      P.bg=ocean?'#101c26':'#1c1711';P.panel=ocean?'#1a2e3b':'#30261a';
-      P.line=ocean?'#415f71':'#68543c';P.dim=ocean?'#9fb9ca':'#b39a78';P.amber=ocean?'#9dd3e8':'#ffbc68';
+      const ocean=s.theme==='OCEAN',mono=s.theme==='MONO';
+      P.bg=mono?'#101010':ocean?'#101c26':'#1c1711';P.panel=mono?'#242424':ocean?'#1a2e3b':'#30261a';P.paper=mono?'#f5f5f5':'#f4ebd6';
+      P.line=mono?'#626262':ocean?'#415f71':'#68543c';P.dim=mono?'#b8b8b8':ocean?'#9fb9ca':'#b39a78';P.amber=mono?'#ffffff':ocean?'#9dd3e8':'#ffbc68';
       ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;rect(0,0,320,240,s.power==='off'||s.power==='sleep'?'#000000':P.bg);
       if(s.power==='off'||s.power==='sleep'||s.power==='standby'){if(s.power==='standby')rect(0,0,320,240,'#000000');return;}
       if(s.power==='shutdown'){header('REMORA');centeredSprite('sleep',160,155);catSprite('sleep',145,94);text('SAMPAI MOO-LAGI!',160,175,2,P.paper,'center');return;}
@@ -534,9 +536,9 @@
       else if(v==='home'||v==='modeSelect')carousel();
       else if(v==='pregame')pregame();
       else if(v==='gameInfo')info();
-      else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILES','NETWORK','SYSTEM','STATS','FIRST LOGIN'],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
-      else if(root.RemoraRatings&&['rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','devGate','rateResults','rateArchive','rateReport'].includes(v))ratingView(v);
-      else if(v==='profiles')list('5 PEMAIN + DEVELOPER',s.profiles.map((p,i)=>p?(i===s.activeProfile?'> ':'')+p.playerName:'+ ADD PLAYER'),s.profileSelection);
+      else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILES','NETWORK','SYSTEM','STATS','FIRST LOGIN',...(s.activeProfile===5&&s.developerUnlocked?['RATING PROMPT']:[])],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
+      else if(root.RemoraRatings&&['rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','devGate','rateResults','rateArchive','rateReport','ratingInvite','ratingPromptSettings'].includes(v))ratingView(v);
+      else if(v==='profiles')list('PLAYER PROFILE',s.profiles.map((p,i)=>p?(i===s.activeProfile?'> ':'')+p.playerName:'+ ADD PLAYER'),s.profileSelection);
       else if(v==='profileAction')list('PLAYER',['SWITCH USER','EDIT NAME','DELETE USER'],s.profileAction);
       else if(v==='deleteProfile')detail('HAPUS PEMAIN?',s.profiles[s.profileTarget]?.playerName||'','REKOR PEMAIN INI AKAN DIHAPUS','profile',[null,null,null,'BATAL',null,'HAPUS']);
       else if(v==='firstLoginConfirm')detail('FIRST LOGIN','PEMAIN BARU','PROFIL LAMA TETAP TERSIMPAN','profile',[null,null,null,'BATAL',null,'YA']);
@@ -567,12 +569,12 @@
       }
       else if(['leds','theme'].includes(v)){
         const titles={sound:'SOUND',display:'DISPLAY',leds:'KEY LIGHT',theme:'THEME'},symbols={sound:'sound',display:'sun',leds:'light',theme:'theme'};
-        const value=v==='sound'?(s.sound?'ON':'OFF'):v==='display'?s.display+'%':v==='leds'?s.leds+'%':s.theme;
+        const value=v==='sound'?(s.sound?'ON':'OFF'):v==='display'?s.display+'%':v==='leds'?s.leds+'%':s.theme==='MONO'?'WHITE / BLACK':s.theme;
         detail(titles[v],value,'',symbols[v]);
       }else if(v==='profile'){
-        header('PROFILE');catSprite('groom',160,111);text(s.playerName||'PLAYER',160,122,3,P.paper,'center');smallText('ID '+s.playerId.slice(-8),160,162,P.dim,'center');footer([null,null,null,'BACK',null,'EDIT']);
+        header('PLAYER PROFILE');catSprite('groom',160,111);text(s.playerName||'PLAYER',160,122,3,P.paper,'center');smallText('ID '+s.playerId.slice(-8),160,162,P.dim,'center');footer([null,null,null,'BACK',null,'EDIT']);
       }else if(v==='stats'){
-        header('ACHIEVEMENTS');catSprite('happy',257,87);
+        header('ACHIEVEMENTS');catSprite('happy',126,87);
         [['GAMES',s.games],['BEST SCORE',s.best],['REACTION',s.bestReaction==null?'--':s.bestReaction+' MS']].forEach(([a,b],i)=>{smallText(a,15,57+i*49,P.dim);text(b,304,74+i*49,2,P.paper,'right');line(15,96+i*49,304,96+i*49,P.line);});footer([null,null,null,'BACK']);
       }else if(v==='nameEditor'){
         header(s.namePurpose==='first'?(s.nameReturnView?'TAMBAH PEMAIN':'WELCOME TO REMORA'):'EDIT PROFILE');cow(132,37,1,'happy',false);text('SIAPA NAMAMU?',160,83,2,P.paper,'center');

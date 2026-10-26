@@ -23,3 +23,9 @@ Catatan diberi nomor Rate 1, Rate 2, dan seterusnya, lengkap dengan nama serta I
 Ini kunci gestur untuk akses lokal, bukan autentikasi kriptografis. Rating dan data pemain disimpan lokal, tanpa cloud. Firmware memakai namespace feedback pada partisi userdata; simulator memakai localStorage remora-ratings. Maksimal 64 catatan. Saat penuh, catatan lama tidak ditimpa; penilaian baru menampilkan pesan gagal/arsip penuh. OTA dengan peta partisi tetap mempertahankan profil dan rating. Erase seluruh chip atau menghapus data browser dapat menghapus data.
 
 Pesan akhir: "terimakasih sudah kasih rating buat Remora, segala masukan sangat berarti".
+
+## Ajakan setelah game over (v0.3.0)
+
+Ajakan opsional menunggu 2,8 detik setelah game over. Pemain bisa memilih Nanti atau menilai game yang baru dimainkan; setelah selesai kembali ke hasil game. Muncul setelah minimal tiga game berakhir dan hasil cukup berarti (dua level selesai, skor 600, atau rekor baru dengan satu level selesai). Di antara ajakan perlu enam game over dan cooldown sepuluh menit pada sesi penyalaan yang sama. Satu profil/game hanya diminta sekali; game yang sudah dinilai, profil XDAXA, dan arsip yang penuh tidak memicu ajakan.
+
+Masuk XDAXA > Settings > RATING PROMPT. Ungu mematikan dan kuning mengaktifkan ajakan untuk semua profil. Pilihan tersimpan pada pengaturan perangkat, bukan preferensi per profil. Rate Me tetap dapat digunakan ketika ajakan dimatikan. Keluar atau Retry sebelum ajakan tampil membatalkan ajakan tertunda.

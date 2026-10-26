@@ -20,11 +20,12 @@ static void persist(){save(prefs);dirty=false;saveAt=now();}
 static void checkpoint(){if(ui.view==View::Playing){prefs.resumeMode=game.s.mode;prefs.resumeDifficulty=game.s.difficulty;prefs.resumeLevel=game.s.level;prefs.resumeScore=game.s.score;prefs.resumeClears=game.s.clears;}persist();}
 static void tutorialStep(int step){ui.tutorial=step;ui.tutorialAt=now();ui.tutorialReveal=false;ui.tutorialDialog=true;if(step<=1||step==6)ui.view=View::Home;else if(step==2){ui.view=View::Guide;ui.guidePage=0;}else if(step==3||step==4)ui.view=View::Pregame;else ui.view=View::Settings;ui.game=0;ui.selection=0;}
 static void finishTutorial(){ui.tutorial=-1;prefs.tutorialDone=true;prefs.firstLoginPending=false;persist();ui.view=View::Home;ui.game=0;}
-static void home(){ui.view=View::Home;exitAt=ui.exitStarted=-1;repeatKey=0;consumed|=stable;prefs.resumeMode=-1;}
+static void home(){ui.rateInviteAt=0;ui.view=View::Home;exitAt=ui.exitStarted=-1;repeatKey=0;consumed|=stable;prefs.resumeMode=-1;}
 static void nameEditor(bool fresh,bool cancellable=false){if(!fresh&&prefs.active==DeveloperSlot){ui.view=View::Profiles;return;}pendingProfileSlot=-1;ui.canCancelName=cancellable;newName=fresh;ui.view=View::Name;ui.entryTitle=fresh?"PEMAIN BARU":"EDIT NAME";ui.entry=fresh?"":prefs.player;ui.charGroup=0;ui.charIndex=0;}
 static void cancelNameEditor(){if(ui.view!=View::Name||!ui.canCancelName)return;pendingProfileSlot=-1;ui.canCancelName=false;ui.entry.clear();newName=false;ui.view=View::Profiles;ui.selection=selectedProfile;}
-static void startGame(){networkStop();std::copy(std::begin(prefs.phraseCounters),std::end(prefs.phraseCounters),game.winCounts.begin());game.start(ui.game,prefs.difficulty[ui.game],esp_random());game.s.recordAtStart=prefs.records[ui.game][prefs.difficulty[ui.game]];ui.view=View::Playing;prefs.games++;prefs.resumeMode=-1;dirty=true;}
-static void boot(){lockDeveloper(prefs);ui.developerUnlocked=false;ui.view=View::Boot;ui.animationStart=now();int old=ui.peekGame;ui.peekGame=(old+1+esp_random()%(GameCount-1))%GameCount;ui.peekSide=esp_random()%2;}
+static bool gameOverSeen=false;
+static void startGame(){gameOverSeen=false;ui.rateInviteAt=0;networkStop();std::copy(std::begin(prefs.phraseCounters),std::end(prefs.phraseCounters),game.winCounts.begin());game.start(ui.game,prefs.difficulty[ui.game],esp_random());game.s.recordAtStart=prefs.records[ui.game][prefs.difficulty[ui.game]];ui.view=View::Playing;prefs.games++;prefs.resumeMode=-1;dirty=true;}
+static void boot(){audioEffect("boot");lockDeveloper(prefs);ui.developerUnlocked=false;ui.view=View::Boot;ui.animationStart=now();int old=ui.peekGame;ui.peekGame=(old+1+esp_random()%(GameCount-1))%GameCount;ui.peekSide=esp_random()%2;}
 static void clockReset(){prefs.spiMHz=10;prefs.spiPending=false;persist();displayStart(10);uiInvalidate();}
 static void setPhase(PowerPhase phase){auto old=ui.power;if(old==phase)return;ui.power=phase;exitAt=ui.exitStarted=-1;repeatKey=0;if(phase==PowerPhase::Play){consumed|=stable;peripherals(true);if(displayStart(prefs.spiMHz)!=ESP_OK){prefs.spiMHz=10;prefs.spiPending=false;persist();ESP_ERROR_CHECK(displayStart(10));}uiInvalidate();if(suspended){ui.view=resumeView;suspended=false;game.s.held.fill(false);}else boot();}
  else if(phase==PowerPhase::Standby){otaCancel();checkpoint();peripherals(false);}
@@ -40,29 +41,44 @@ static void shutdownGesture(int64_t t){
 }
 static int devTaps=0,resultTaps=0;static int64_t devTapAt=-2001,resultTapAt=-2001;
 static bool developer(){return prefs.active==DeveloperSlot&&ui.developerUnlocked;}
-static void ratingSave(){RatingRecord record;record.owner=prefs.id;record.name=prefs.player;record.game=ui.rateKind;record.stars=ui.rateStars;record.suggestions=ui.rateTips;if(saveRating(record)){ui.status.clear();ui.view=View::RatingThanks;}else ui.status="GAGAL SIMPAN / ARSIP PENUH";}
-static void ratingStart(int kind){ui.rateKind=kind;ui.rateStep=0;ui.rateStars.fill(0);ui.rateTips=0;ui.status.clear();ui.view=View::RatingStars;}
+static bool ratingInviteEligible(int64_t t){
+ auto&s=game.s;bool record=s.recordAtStart>=0&&s.score>s.recordAtStart;
+ if(!prefs.ratingPrompt.eligible(s.score,s.clears,record,false,bool(prefs.ratingAsked&(1<<s.mode)),developer(),t)){return false;}
+ auto records=loadRatings();if(records.size()>=RatingLimit){return false;}
+ return std::none_of(records.begin(),records.end(),[&](const auto&r){return r.owner==prefs.id&&r.game==s.mode;});
+}
+static void ratingGameOverTick(int64_t t){
+ if(ui.power!=PowerPhase::Play){return;}
+ if(ui.view==View::Playing&&game.s.phase==Phase::Over&&!gameOverSeen){gameOverSeen=true;prefs.ratingPrompt.completed++;if(ratingInviteEligible(t)){ui.rateInviteMode=game.s.mode;ui.rateInviteAt=t+2800;}dirty=true;}
+ if(ui.rateInviteAt&&t>=ui.rateInviteAt){ui.rateInviteAt=0;if(ui.view==View::Playing&&game.s.phase==Phase::Over&&ratingInviteEligible(t)){prefs.ratingAsked|=1<<game.s.mode;prefs.ratingPrompt.shown(t);persist();ui.view=View::RateInvite;audioEffect("invite");}}
+}
+
+static void ratingSave(){RatingRecord record;record.owner=prefs.id;record.name=prefs.player;record.game=ui.rateKind;record.stars=ui.rateStars;record.suggestions=ui.rateTips;if(saveRating(record)){ui.status.clear();ui.view=View::RatingThanks;audioEffect("ratingSaved");}else ui.status="GAGAL SIMPAN / ARSIP PENUH";}
+static void ratingStart(int kind,bool fromInvite=false){ui.rateFromInvite=fromInvite;ui.rateKind=kind;ui.rateStep=0;ui.rateStars.fill(0);ui.rateTips=0;ui.status.clear();ui.view=View::RatingStars;}
 static bool ratingPress(int key){
  if(ui.view==View::DevGate){if(key==4)ui.view=View::Profiles;else if(key==3){devTaps=now()-devTapAt<2000?devTaps+1:1;devTapAt=now();if(devTaps==3){switchProfile(prefs,DeveloperSlot,true);ui.developerUnlocked=true;devTaps=0;home();}}else devTaps=0;return true;}
- if(ui.view<View::RateMenu||ui.view>View::RateReport)return false;
- if(ui.view>=View::RateResults&&!developer()){ui.view=View::Stats;return true;}
- ui.status.clear();
+ if(ui.view<View::RateMenu||ui.view>View::RatePromptSettings){return false;}
+ if((ui.view==View::RateResults||ui.view==View::RateArchive||ui.view==View::RateReport||ui.view==View::RatePromptSettings)&&!developer()){ui.view=View::Stats;return true;}
+ ui.status.clear();audioEffect(key==4?"back":ui.view==View::RatingStars&&(key==1||key==3)?"star":key==6?"confirm":"move");
  switch(ui.view){
+ case View::RatePromptSettings:if(key==1||key==3){prefs.ratingPrompt.enabled=key==3;ui.rateInviteAt=0;persist();}else if(key==4||key==6){ui.view=View::Settings;ui.selection=11;}break;
+ case View::RateInvite:if(key==4){ui.view=View::Playing;ui.rateFromInvite=false;}else if(key==6)ratingStart(ui.rateInviteMode,true);break;
  case View::RateMenu:if(key==2||key==5)ui.selection=1-ui.selection;else if(key==4)home();else if(key==6){if(ui.selection==0){ui.view=View::RateGames;ui.selection=0;}else ratingStart(-1);}break;
  case View::RateGames:if(key==2||key==5)ui.selection=(ui.selection+(key==2?10:1))%11;else if(key==4){ui.view=View::RateMenu;ui.selection=0;}else if(key==6)ratingStart(ui.selection);break;
- case View::RatingStars:if(key==1||key==3)ui.rateStars[ui.rateStep]=std::clamp(int(ui.rateStars[ui.rateStep])+(key==1?-1:1),1,10);else if(key==4){if(ui.rateStep)ui.rateStep--;else{ui.view=ui.rateKind<0?View::RateMenu:View::RateGames;ui.selection=ui.rateKind<0?1:ui.rateKind;}}else if(key==6){if(!ui.rateStars[ui.rateStep])ui.status="ISI MINIMAL SETENGAH BINTANG";else if(ui.rateKind>=0){ui.view=View::RatingSuggestions;ui.selection=0;}else if(ui.rateStep<4)ui.rateStep++;else ratingSave();}break;
+ case View::RatingStars:if(key==1||key==3)ui.rateStars[ui.rateStep]=std::clamp(int(ui.rateStars[ui.rateStep])+(key==1?-1:1),1,10);else if(key==4){if(ui.rateStep)ui.rateStep--;else if(ui.rateFromInvite){ui.view=View::Playing;ui.rateFromInvite=false;}else{ui.view=ui.rateKind<0?View::RateMenu:View::RateGames;ui.selection=ui.rateKind<0?1:ui.rateKind;}}else if(key==6){if(!ui.rateStars[ui.rateStep])ui.status="ISI MINIMAL SETENGAH BINTANG";else if(ui.rateKind>=0){ui.view=View::RatingSuggestions;ui.selection=0;}else if(ui.rateStep<4)ui.rateStep++;else ratingSave();}break;
  case View::RatingSuggestions:if(key==2||key==5)ui.selection=(ui.selection+(key==2?6:1))%7;else if(key==4)ui.view=View::RatingStars;else if(key==3)ratingSave();else if(key==6){int bit=1<<ui.selection;if(ui.rateTips&bit)ui.rateTips^=bit;else if(__builtin_popcount(ui.rateTips)<2)ui.rateTips|=bit;else ui.status="MAKSIMAL DUA SARAN";}break;
- case View::RatingThanks:if(key==4||key==6){ui.view=View::RateMenu;ui.selection=0;}break;
+ case View::RatingThanks:if(key==4||key==6){ui.view=ui.rateFromInvite?View::Playing:View::RateMenu;ui.rateFromInvite=false;ui.selection=0;}break;
  case View::RateResults:if(key==2||key==5)ui.selection=1-ui.selection;else if(key==4)ui.view=View::Stats;else if(key==6){ui.rateFilter=ui.selection;ui.ratingRecords.clear();for(auto&r:loadRatings())if((r.game>=0)==(ui.rateFilter==0))ui.ratingRecords.push_back(r);ui.selection=0;ui.view=View::RateArchive;}break;
  case View::RateArchive:if(key==4){ui.view=View::RateResults;ui.selection=ui.rateFilter;}else if(!ui.ratingRecords.empty()){if(key==2||key==5)ui.selection=(ui.selection+(key==2?int(ui.ratingRecords.size())-1:1))%ui.ratingRecords.size();else if(key==6){ui.rateReportRows=ratingReport(ui.ratingRecords[ui.selection]);ui.rateScroll=0;ui.view=View::RateReport;}}break;
  case View::RateReport:if(key==4)ui.view=View::RateArchive;else if(key==2||key==5)ui.rateScroll=std::clamp(ui.rateScroll+(key==2?-1:1),0,std::max(0,int(ui.rateReportRows.size())-5));break;
  default:break;
  }
+ if(!ui.status.empty())audioEffect("warning");
  return true;
 }
 
 static void press(int key){if(ui.power!=PowerPhase::Play)return;
- if(ui.view==View::ConfirmShutdown){if(key==4){ui.view=shutdownReturn;if(ui.tutorial>=0)ui.tutorialAt+=now()-shutdownAt;shutdownFrozen=false;shutdownAt=-1;}else if(key==6){ui.view=View::Shutdown;ui.animationStart=now();ui.tutorial=-1;shutdownFrozen=false;shutdownAt=-1;suspended=false;otaCancel();persist();}return;}
+ if(ui.view==View::ConfirmShutdown){if(key==4){ui.view=shutdownReturn;if(ui.tutorial>=0)ui.tutorialAt+=now()-shutdownAt;shutdownFrozen=false;shutdownAt=-1;}else if(key==6){ui.view=View::Shutdown;ui.animationStart=now();ui.tutorial=-1;shutdownFrozen=false;shutdownAt=-1;suspended=false;otaCancel();audioEffect("off");persist();}return;}
  if(shutdownFrozen){return;}
  if(ui.view==View::Boot||ui.view==View::FirstCountdown||ui.view==View::Shutdown)return;
  if(ui.tutorial>=0){if(ui.tutorialDialog){if(key!=6){if(!((ui.tutorial==1&&key==2)||(ui.tutorial==3&&key==3)||(ui.tutorial==2&&(key==1||key==3))))return;ui.tutorialDialog=false;}else{if(!ui.tutorialReveal&&now()-ui.tutorialAt<int64_t(tutorialMessage(ui.tutorial,prefs.player).size()*30)&&key==6){ui.tutorialReveal=true;return;}if(ui.tutorial>0&&ui.tutorial<6){ui.tutorialDialog=false;return;}}}if(ui.tutorial==0&&key==6)tutorialStep(1);else if(ui.tutorial==1&&key==2)tutorialStep(2);else if(ui.tutorial==2&&(key==1||key==3))ui.guidePage=std::clamp(ui.guidePage+(key==1?-1:1),0,ui.guidePages-1);else if(ui.tutorial==2&&key==6)tutorialStep(3);else if(ui.tutorial==3&&key==3){prefs.difficulty[0]=std::min(4,int(prefs.difficulty[0])+1);dirty=true;tutorialStep(4);}else if(ui.tutorial==4&&key==6)tutorialStep(5);else if(ui.tutorial==5&&(key==2||key==5))ui.selection=(ui.selection+(key==2?10:1))%11;else if(ui.tutorial==5&&key==6)tutorialStep(6);else if(ui.tutorial==6&&key==6)finishTutorial();return;}
@@ -74,7 +90,7 @@ static void press(int key){if(ui.power!=PowerPhase::Play)return;
  case View::Guide:if(key==1||key==3)ui.guidePage=std::clamp(ui.guidePage+(key==1?-1:1),0,ui.guidePages-1);else if(key==4)home();else if(key==6)ui.view=View::Pregame;break;
  case View::Pregame:if(key==1||key==3){prefs.difficulty[ui.game]=std::clamp(int(prefs.difficulty[ui.game])+(key==1?-1:1),0,4);dirty=true;}else if(key==4)home();else if(key==6)startGame();break;
  case View::Playing:if(game.finished()){if(key==4)home();else if(key==6){if(game.s.phase==Phase::ReactionResult)game.nextLevel();else startGame();}}else game.press(key);break;
- case View::Settings:if(key==2||key==5)ui.selection=(ui.selection+(key==2?10:1))%11;else if(key==4)home();else if(key==6){switch(ui.selection){case 0:ui.view=View::Sound;break;case 1:ui.view=View::Display;break;case 2:ui.view=View::WifiStatus;ui.entryTitle="THEME";ui.status=prefs.ocean?"OCEAN":"AMBER";break;case 3:ui.view=View::WifiStatus;ui.entryTitle="KEY LIGHT";ui.status=std::to_string(prefs.leds)+"%";break;case 4:ui.view=View::WifiStatus;ui.entryTitle="BATTERY";ui.status=std::to_string(ui.battery.percent)+"% / "+std::to_string(ui.battery.mv)+" MV";break;case 5:ui.view=View::Profiles;ui.selection=prefs.active;persist();break;case 6:ui.view=View::Network;ui.selection=0;ui.wifiFromScan=false;break;case 7:ui.view=View::System;ui.selection=0;break;case 8:ui.view=View::Stats;break;case 9:ui.view=View::ConfirmFirst;break;case 10:ui.view=View::Shutdown;ui.animationStart=now();checkpoint();break;}}break;
+ case View::Settings:if(key==2||key==5){int count=developer()?12:11;ui.selection=(ui.selection+(key==2?count-1:1))%count;}else if(key==4)home();else if(key==6){switch(ui.selection){case 0:ui.view=View::Sound;break;case 1:ui.view=View::Display;break;case 2:ui.view=View::WifiStatus;ui.entryTitle="THEME";ui.status=prefs.mono?"WHITE / BLACK":prefs.ocean?"OCEAN":"AMBER";break;case 3:ui.view=View::WifiStatus;ui.entryTitle="KEY LIGHT";ui.status=std::to_string(prefs.leds)+"%";break;case 4:ui.view=View::WifiStatus;ui.entryTitle="BATTERY";ui.status=std::to_string(ui.battery.percent)+"% / "+std::to_string(ui.battery.mv)+" MV";break;case 5:ui.view=View::Profiles;ui.selection=prefs.active;persist();break;case 6:ui.view=View::Network;ui.selection=0;ui.wifiFromScan=false;break;case 7:ui.view=View::System;ui.selection=0;break;case 8:ui.view=View::Stats;break;case 9:ui.view=View::ConfirmFirst;break;case 10:ui.view=View::Shutdown;ui.animationStart=now();audioEffect("off");checkpoint();break;case 11:if(developer())ui.view=View::RatePromptSettings;break;}}break;
  case View::Sound:if(key==4||key==6)ui.view=View::Settings;else if(key==2||key==5)ui.soundRow=(ui.soundRow+(key==2?2:1))%3;else if(key==1||key==3){int*values[]={&prefs.master,&prefs.bgm,&prefs.sfx};*values[ui.soundRow]=std::clamp(*values[ui.soundRow]+(key==1?-10:10),0,100);dirty=true;}break;
  case View::Display:if(prefs.spiPending){if(key==6){prefs.spiPending=false;persist();}else if(key==4)clockReset();}else if(key==2||key==5)ui.displayRow=1-ui.displayRow;else if(key==4)ui.view=View::Settings;else if(key==1||key==3){if(ui.displayRow==0){prefs.brightness=std::clamp(prefs.brightness+(key==1?-10:10),10,100);dirty=true;}else{const int clocks[]={10,16,20,26,40};int index=std::find(clocks,clocks+5,prefs.spiMHz)-clocks;int next=clocks[std::clamp(index+(key==1?-1:1),0,4)];prefs.spiPending=true;persist();ui.spiDeadline=now()+15000;errorsAtTrial=displayErrors();if(displayStart(next)!=ESP_OK){clockReset();}else{prefs.spiMHz=next;uiInvalidate();}}}break;
  case View::Profiles:if(key==2||key==5)ui.selection=(ui.selection+(key==2?ProfileCount-1:1))%ProfileCount;else if(key==4)ui.view=View::Settings;else if(key==6){selectedProfile=ui.selection;if(selectedProfile==DeveloperSlot){ui.view=View::DevGate;devTaps=0;}else if(!prefs.profiles[selectedProfile].used){nameEditor(true,true);pendingProfileSlot=selectedProfile;}else{ui.view=View::ProfileAction;ui.selection=0;}}break;
@@ -90,7 +106,7 @@ static void press(int key){if(ui.power!=PowerPhase::Play)return;
  case View::System:if(key==2||key==5)ui.selection=(ui.selection+(key==2?4:1))%5;else if(key==4)ui.view=View::Settings;else if(key==6){View views[]={View::Diagnostics,View::ButtonTest,View::LedTest,View::SpeakerTest,View::DisplayTest};ui.view=views[ui.selection];ui.entryTitle="DIAGNOSTICS";ui.status=std::string("FW ")+esp_app_get_description()->version+" / HEAP "+std::to_string(esp_get_free_heap_size())+" / ADC "+std::to_string(ui.battery.mv)+" MV";}break;
  case View::ButtonTest:case View::SpeakerTest:case View::LedTest:if(key==4)ui.view=View::System;else{ui.testKey=key;if(ui.view==View::SpeakerTest)audioEffect("tone");}break;
  case View::Secret:if(key==4)home();else if(key==6)audioMeow();break;
- default:if(ui.entryTitle=="WIFI"&&ui.wifiFromScan&&(key==4||key==6)){ui.view=View::WifiScan;ui.selection=0;}else if(ui.entryTitle=="THEME"&&(key==1||key==3)){prefs.ocean=!prefs.ocean;ui.status=prefs.ocean?"OCEAN":"AMBER";dirty=true;}else if(ui.entryTitle=="KEY LIGHT"&&(key==1||key==3)){prefs.leds=std::clamp(prefs.leds+(key==1?-10:10),0,100);ui.status=std::to_string(prefs.leds)+"%";dirty=true;}else if(key==4||key==6)ui.view=View::Settings;break;
+ default:if(ui.entryTitle=="WIFI"&&ui.wifiFromScan&&(key==4||key==6)){ui.view=View::WifiScan;ui.selection=0;}else if(ui.entryTitle=="THEME"&&(key==1||key==3)){int theme=(prefs.mono?2:prefs.ocean?1:0)+(key==1?2:1);theme%=3;prefs.ocean=theme==1;prefs.mono=theme==2;ui.status=prefs.mono?"WHITE / BLACK":prefs.ocean?"OCEAN":"AMBER";dirty=true;}else if(ui.entryTitle=="KEY LIGHT"&&(key==1||key==3)){prefs.leds=std::clamp(prefs.leds+(key==1?-10:10),0,100);ui.status=std::to_string(prefs.leds)+"%";dirty=true;}else if(key==4||key==6)ui.view=View::Settings;break;
  }
 }
 static void finishEntry(){if(ui.view==View::Name){if(ui.entry.empty()||ui.entry=="XDAXA")return;if(pendingProfileSlot>=0){if(!addProfile(prefs,pendingProfileSlot))return;pendingProfileSlot=-1;}ui.canCancelName=false;strncpy(prefs.player,ui.entry.c_str(),7);prefs.player[7]=0;prefs.used=true;persist();if(prefs.firstLoginPending||newName||!prefs.tutorialDone)tutorialStep(0);else ui.view=View::Profiles;}else if(ui.view==View::Text){if((ui.passwordRequired&&ui.entry.empty())||(!ui.entry.empty()&&ui.entry.size()<8)){ui.status="PASSWORD MINIMAL 8 KARAKTER";return;}networkConnect(pendingSsid,ui.entry);std::fill(ui.entry.begin(),ui.entry.end(),0);ui.entry.clear();ui.view=View::WifiStatus;ui.entryTitle="WIFI";ui.status="MENGHUBUNGKAN...";}}
@@ -107,9 +123,10 @@ static void tick(){int64_t t=now();ui.now=t;uint8_t raw=readKeys();if(raw!=rawPr
  if(exitAt>=0&&t-exitAt>=2000){home();consumed|=8;}
  if(repeatKey&&t>=repeatAt){consumed|=1<<(repeatKey-1);press(repeatKey);repeatAt=t+150;}
  static int64_t gameAt=t;if(!shutdownFrozen&&ui.power==PowerPhase::Play&&ui.view==View::Playing&&!game.finished())game.advance(std::min(int64_t(100),t-gameAt));else if(!shutdownFrozen&&ui.view==View::Playing&&game.s.phase==Phase::ReactionResult)game.advance(std::min(int64_t(100),t-gameAt));gameAt=t;
+ ratingGameOverTick(t);
  if(prefs.spiPending&&(t>=ui.spiDeadline||displayErrors()!=errorsAtTrial))clockReset();
  if(ui.view==View::WifiStatus&&ui.entryTitle=="WIFI")ui.status=networkConnectionMessage();
- audioVolumes(prefs.master,prefs.bgm,prefs.sfx);audioMenu(ui.power==PowerPhase::Play&&ui.view!=View::Playing&&ui.view!=View::Secret);vibrate(0);
+ audioVolumes(prefs.master,prefs.bgm,prefs.sfx);audioMenu(ui.power==PowerPhase::Play&&ui.view!=View::Playing&&ui.view!=View::Secret&&ui.view!=View::Shutdown&&ui.view!=View::Boot);vibrate(0);
  if(dirty&&t-saveAt>=5000)persist();
  int interval=ui.view==View::Playing||ui.tutorial>=0||ui.view==View::Boot||ui.view==View::FirstCountdown?16:100;
  if(t-frameAt>=interval&&peripheralsOn()){uiDraw(ui);setLeds(ui.view==View::Playing?game.leds():ui.nav,prefs.leds);frameAt=t;}

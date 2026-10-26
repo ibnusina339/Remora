@@ -6,6 +6,7 @@
 #include "esp_err.h"
 #include "esp_lcd_panel_ops.h"
 #include "lvgl.h"
+#include "rating_prompt.hpp"
 #include "game_engine.hpp"
 namespace remora {
 inline constexpr int Keys[]={1,2,3,4,6,7};
@@ -13,10 +14,10 @@ inline constexpr int HoldPin=14,PeripheralPin=15,UsbPin=8,AdcPin=0,AudioPin=16,V
 inline constexpr int UserProfileCount=5,DeveloperSlot=5,ProfileCount=6;
 struct UserProfile {
  uint32_t id=0;bool used=false,tutorialDone=false;uint8_t difficulty[GameCount]{};int records[GameCount][5]{};uint32_t phraseCounters[GameCount]{};
- int master=70,bgm=35,sfx=75,brightness=100,leds=60;bool ocean=false;char player[8]="PLAYER";uint32_t games=0,wins=0;
+ int master=70,bgm=35,sfx=75,brightness=100,leds=60;bool ocean=false,mono=false;uint16_t ratingAsked=0;char player[8]="PLAYER";uint32_t games=0,wins=0;
 };
 struct Preferences:UserProfile {
- UserProfile profiles[ProfileCount];int active=0,spiMHz=10;bool spiPending=false,firstLoginPending=true;
+ RatingPromptPolicy ratingPrompt;UserProfile profiles[ProfileCount];int active=0,spiMHz=10;bool spiPending=false,firstLoginPending=true;
  int resumeMode=-1,resumeDifficulty=1,resumeLevel=0,resumeScore=0,resumeClears=0;
 };
 Preferences defaults();void load(Preferences&);void save(Preferences&);void lockDeveloper(Preferences&);

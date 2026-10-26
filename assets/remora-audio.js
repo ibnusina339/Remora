@@ -41,10 +41,11 @@
       source.onended=()=>{voices.delete(voice);source.disconnect();gain.disconnect();};source.start(ctx.currentTime);
     }
     function effect(name){
-      const sequences={boot:[60,64,67,72],off:[72,67,60,48],clear:[64,67,72,76],fail:[60,58,53],confirm:[67,72],back:[64,60],secret:[72,79,84,88],food:[72,79],hit:[79,84],damage:[48,43],go:[79],correct:[76],move:[67],step:[55],bounce:[74]};
+      const sequences={boot:[60,64,67,72],off:[72,67,60,48],clear:[64,67,72,76],fail:[67,65,62,55],recordFail:[76,79,84,79,60,48],ratingSaved:[76,79,84],invite:[76,79],star:[79],warning:[59,57],portal:[64,71,78,83],bonus:[79,83,86],confirm:[67,72],back:[64,60],secret:[72,79,84,88],food:[72,79],hit:[79,84],damage:[48,43],go:[79],correct:[76],move:[67],step:[55],bounce:[74]};
+      if(['fail','recordFail','clear','ratingSaved'].includes(name)){for(const v of [...voices])if(v.bus==='sfx'&&v.kind!=='meow'){try{v.osc.stop();}catch(_){}voices.delete(v);}}
       if(name==='meow'){meow();return;}
       if(name==='shoot'){note(1050,.09,'square','sfx',0,.045,250);return;}
-      (sequences[name]||sequences.move).forEach((n,i)=>note(frequency(n),name==='fail'?.22:.12,name==='bounce'?'sine':'triangle','sfx',i*.075,name==='step'?.035:.11));
+      (sequences[name]||sequences.move).forEach((n,i)=>note(frequency(n),['fail','recordFail'].includes(name)?.22:name==='move'||name==='star'||name==='bounce'?.055:.12,name==='bounce'?'sine':'triangle','sfx',i*(['fail','recordFail'].includes(name)?.11:.075),name==='step'?.035:name==='move'||name==='star'?.065:.11));
     }
     function stopMusic(){if(loop!==null){clearInterval(loop);loop=null;}for(const v of voices)if(v.bus==='bgm'){try{v.osc.stop();}catch(_){}}}
     function musicTick(){
@@ -55,7 +56,7 @@
     }
     function sync(s){
       levels={master:s.masterVolume??70,bgm:s.bgmVolume??35,sfx:s.sfxVolume??75};apply();
-      scene=s.power==='on'&&['home','modeSelect','pregame','gameInfo','settings','sound','display','theme','leds','battery','profile','stats','network','system'].includes(s.view)?'menu':'';
+      scene=s.power==='on'&&['home','modeSelect','pregame','gameInfo','settings','sound','display','theme','leds','battery','profile','profiles','stats','network','system','rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','rateResults','rateArchive','rateReport','devGate','ratingPromptSettings'].includes(s.view)?'menu':'';
       if(scene&&ctx?.state==='running'&&levels.master&&levels.bgm){if(loop===null){step=0;musicTick();loop=setInterval(musicTick,150);}}
       else stopMusic();
       if(s.power!==previousPower){if(s.power==='boot')effect('boot');if(s.power==='shutdown')effect('off');previousPower=s.power;}

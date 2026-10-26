@@ -3,13 +3,30 @@
  const questions=['DAYA TARIK TAMPILAN','KEUNIKAN REMORA','KEMUDAHAN NAVIGASI','KENYAMANAN KONTROL','KEPUASAN KESELURUHAN'];
  const suggestions=['TERLALU MUDAH','TERLALU SULIT','TEMPO TERLALU CEPAT','KONTROL MEMBINGUNGKAN','PETUNJUK KURANG JELAS','TAMPILAN SULIT DIBACA','SUARA KURANG NYAMAN'];
  const thanks='terimakasih sudah kasih rating buat Remora, segala masukan sangat berarti';
- const views=new Set(['rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','devGate','rateResults','rateArchive','rateReport']);
+ const views=new Set(['rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','devGate','rateResults','rateArchive','rateReport','ratingInvite','ratingPromptSettings']);
  function create(host){
   const s=host.state;let records=[],gateCount=0,gateAt=-Infinity,resultCount=0,resultAt=-Infinity;
   try{const value=JSON.parse(host.storage.getItem('remora-ratings')||'[]');if(Array.isArray(value))records=value;}catch(_){}
   s.developerUnlocked=false;
   const developer=()=>s.activeProfile===5&&s.developerUnlocked;
-  function open(){s.view='rateMenu';s.rateSelection=0;s.rateHint='';host.render();}
+  let policy={enabled:true,completed:0,lastPromptGame:0,asked:{}},lastPromptAt=-Infinity,rateReturn=null;
+  try{const saved=JSON.parse(host.storage.getItem('remora-rating-policy'));if(saved&&typeof saved==='object')policy={...policy,...saved,asked:saved.asked||{}};}catch(_){}
+  s.ratePromptEnabled=policy.enabled!==false;
+  const policyWrite=()=>{try{host.storage.setItem('remora-rating-policy',JSON.stringify(policy));return true;}catch(_){return false;}};
+  const sfx=name=>host.sfx?.(name);
+  function openPromptSettings(){if(!developer())return;s.ratePromptEnabled=policy.enabled!==false;s.view='ratingPromptSettings';host.render();}
+  function gameOver(info){
+   const game=root.RemoraArcade.catalog.findIndex(g=>g.mode===info.mode),key=s.playerId+':'+game;
+   policy.completed++;if(!policyWrite())return;
+   const eligible=()=>policy.enabled!==false&&game>=0&&records.length<64&&!developer()&&!policy.asked[key]&&!records.some(r=>r.profileId===s.playerId&&r.game===game)&&policy.completed>=3&&(!policy.lastPromptGame||policy.completed-policy.lastPromptGame>=6)&&host.now()-lastPromptAt>=600000&&(info.clears>=2||info.score>=600||(info.newRecord&&info.clears>=1));
+   if(!eligible())return;
+   host.later?.(()=>{
+    if(s.view!=='gameover'||s.mode!==info.mode||!eligible())return;
+    policy.asked[key]=true;policy.lastPromptGame=policy.completed;if(!policyWrite())return;lastPromptAt=host.now();s.rateInviteGame=game;s.view='ratingInvite';sfx('invite');host.render();
+   },2800);
+  }
+
+  function open(){rateReturn=null;s.view='rateMenu';s.rateSelection=0;s.rateHint='';host.render();}
   function gate(){gateCount=0;gateAt=-Infinity;s.view='devGate';host.render();}
   function start(kind){s.rateKind=kind;s.rateQuestion=0;s.rateStars=[0,0,0,0,0];s.rateSuggestions=0;s.rateHint='';s.view='ratingStars';}
   function report(record){
@@ -24,7 +41,7 @@
    if(records.length>=64){s.rateHint='ARSIP PENUH. HUBUNGI DEVELOPER';return;}
    const record={id:records.reduce((n,r)=>Math.max(n,r.id||0),0)+1,profileId:s.playerId,profileName:s.playerName,game:s.rateKind,stars,suggestions:s.rateSuggestions};
    const next=[...records,record];
-   try{host.storage.setItem('remora-ratings',JSON.stringify(next));records=next;s.view='ratingThanks';s.rateHint='';}catch(_){s.rateHint='GAGAL SIMPAN. COBA LAGI';}
+   try{host.storage.setItem('remora-ratings',JSON.stringify(next));records=next;s.view='ratingThanks';s.rateHint='';sfx('ratingSaved');}catch(_){s.rateHint='GAGAL SIMPAN. COBA LAGI';}
   }
   function statsKey(key){
    if(!developer()){resultCount=0;return false;}
@@ -35,9 +52,15 @@
   }
   function press(key){
    if(!views.has(s.view))return false;
-   if(['rateResults','rateArchive','rateReport'].includes(s.view)&&!developer()){s.view='stats';host.render();return true;}
-   s.rateHint='';
-   if(s.view==='devGate'){
+   if(['rateResults','rateArchive','rateReport','ratingPromptSettings'].includes(s.view)&&!developer()){s.view='stats';host.render();return true;}
+   s.rateHint='';sfx(key===4?'back':s.view==='ratingStars'&&(key===1||key===3)?'star':key===6?'confirm':'move');
+   if(s.view==='ratingPromptSettings'){
+    if(key===1||key===3){policy.enabled=key===3;s.ratePromptEnabled=policy.enabled;policyWrite();sfx('confirm');}
+    else if(key===4||key===6){s.view='settings';s.selection=10;}
+   }else if(s.view==='ratingInvite'){
+    if(key===4){s.view='gameover';rateReturn=null;sfx('back');}
+    else if(key===6){const game=s.rateInviteGame;start(game);rateReturn='gameover';sfx('confirm');}
+   }else if(s.view==='devGate'){
     if(key===4)s.view='profiles';
     else if(key===3){const now=host.now();gateCount=now-gateAt<2000?gateCount+1:1;gateAt=now;if(gateCount===3){host.profiles.switch(s,5,true);s.developerUnlocked=true;host.save();host.home();return true;}}
     else gateCount=0;
@@ -51,7 +74,7 @@
     else if(key===6)start(s.rateSelection);
    }else if(s.view==='ratingStars'){
     if(key===1||key===3)s.rateStars[s.rateQuestion]=Math.max(1,Math.min(10,s.rateStars[s.rateQuestion]+(key===1?-1:1)));
-    else if(key===4){if(s.rateQuestion>0)s.rateQuestion--;else{s.view=s.rateKind<0?'rateMenu':'rateGames';s.rateSelection=s.rateKind<0?1:s.rateKind;}}
+    else if(key===4){if(s.rateQuestion>0)s.rateQuestion--;else if(rateReturn){s.view=rateReturn;rateReturn=null;}else{s.view=s.rateKind<0?'rateMenu':'rateGames';s.rateSelection=s.rateKind<0?1:s.rateKind;}}
     else if(key===6){if(!s.rateStars[s.rateQuestion])s.rateHint='ISI MINIMAL SETENGAH BINTANG';else if(s.rateKind>=0){s.view='ratingSuggestions';s.rateSelection=0;}else if(s.rateQuestion<4)s.rateQuestion++;else saveRecord();}
    }else if(s.view==='ratingSuggestions'){
     if(key===2||key===5)s.rateSelection=(s.rateSelection+(key===2?6:1))%7;
@@ -59,7 +82,7 @@
     else if(key===3)saveRecord();
     else if(key===6){const bit=1<<s.rateSelection,count=s.rateSuggestions.toString(2).replace(/0/g,'').length;if(s.rateSuggestions&bit)s.rateSuggestions^=bit;else if(count<2)s.rateSuggestions|=bit;else s.rateHint='MAKSIMAL DUA SARAN';}
    }else if(s.view==='ratingThanks'){
-    if(key===4||key===6)open();
+    if(key===4||key===6){if(rateReturn){s.view=rateReturn;rateReturn=null;}else open();}
    }else if(s.view==='rateResults'){
     if(key===2||key===5)s.rateSelection=1-s.rateSelection;
     else if(key===4)s.view='stats';
@@ -72,9 +95,9 @@
     if(key===2||key===5)s.rateScroll=Math.max(0,Math.min(Math.max(0,s.rateReportRows.length-5),s.rateScroll+(key===2?-1:1)));
     else if(key===4)s.view='rateArchive';
    }
-   host.render();return true;
+   if(s.rateHint)sfx('warning');host.render();return true;
   }
-  return {open,gate,press,statsKey,isView:view=>views.has(view)};
+  return {open,gate,press,statsKey,gameOver,openPromptSettings,isView:view=>views.has(view)};
  }
  root.RemoraRatings={questions,suggestions,thanks,create};
 })(typeof window==='undefined'?globalThis:window);

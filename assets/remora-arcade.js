@@ -67,14 +67,15 @@
     function fail(reason='SALAH TOMBOL'){
       if(!s.mode)return;
       cancel();s.failureReason=reason;s.view='gameover';s.pulse=0;
-      sfx('fail');
       const value=s.mode==='reaction'?null:s.score;
       const newRecord=value!==null&&s.recordAtStart!=null&&value>s.recordAtStart;
+      sfx(newRecord?'recordFail':'fail');
       const bag=root.RemoraFeedback.lossVariants(s.mode,s.score,s.clears,newRecord),last=s.phraseCounters['lossLast:'+s.mode];
       const choices=bag.filter(n=>n!==last),variant=choices[r(choices.length)];s.phraseCounters['lossLast:'+s.mode]=variant;
       const feedback=root.RemoraFeedback.loss(s.mode,s.score,s.clears,newRecord,variant);
       s.message=feedback.title;s.endMessage=feedback.line;s.feedbackTier=feedback.tier;
       if(value!==null)remember(value);
+      host.gameOver?.({mode:s.mode,score:s.score,clears:s.clears,newRecord});
       draw();host.say(reason+'. '+s.message+'. Skor '+s.score);
     }
     function start(mode){
@@ -170,8 +171,8 @@
       g.bumped=false;g.current=target;g.moves++;sfx('step');
       if(hard()&&g.moves>g.moveLimit){fail('TERLALU BANYAK LANGKAH');return;}
       if(!g.visited.includes(target)){g.visited.push(target);points(10);}
-      if(g.portal&&target===g.portal.from&&!g.portalUsed){g.current=g.portal.to;points(15);g.portalUsed=true;if(!g.visited.includes(g.current))g.visited.push(g.current);}
-      if(g.bonuses.includes(g.current)&&!g.collectedBonuses.includes(g.current)){g.collectedBonuses.push(g.current);g.bonusTaken=g.collectedBonuses.length===g.bonuses.length;points(40);}
+      if(g.portal&&target===g.portal.from&&!g.portalUsed){g.current=g.portal.to;points(15);g.portalUsed=true;sfx('portal');if(!g.visited.includes(g.current))g.visited.push(g.current);}
+      if(g.bonuses.includes(g.current)&&!g.collectedBonuses.includes(g.current)){g.collectedBonuses.push(g.current);g.bonusTaken=g.collectedBonuses.length===g.bonuses.length;points(40);sfx('bonus');}
       if(g.current===g.goal){if(hard()&&!g.bonusTaken){fail('BONUS BELUM DIAMBIL');return;}clear();}
       else {deadline(g.stepWindow);draw();}
     }

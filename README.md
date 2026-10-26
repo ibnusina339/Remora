@@ -4,6 +4,8 @@ Konsol enam keyswitch RGB dengan 11 game, maskot sapi, dan kucing rahasia. Repo 
 
 Target: ESP32-C6FH4 flash 4 MB, TFT ST7789V 320×240, enam SK6812 MINI-E, PAM8302A PWM, TP4056 protection. Firmware memakai ESP-IDF **5.5.2** dan LVGL **9.2.2**.
 
+Versi terbaru: **[v0.3.0](https://github.com/ibnusina339/Remora/releases/tag/v0.3.0)**, dengan SFX tambahan, ajakan rating opsional, dan tema White / Black.
+
 ## Mulai
 
 - **Simulator:** buka `index.html`, klik ON, lalu tahan keyswitch kiri atas + kanan atas dua detik. Keyboard **Q + E** juga bisa. Ikuti penamaan dan tutorial pada profil baru.

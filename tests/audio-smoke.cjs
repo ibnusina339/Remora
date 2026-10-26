@@ -19,6 +19,7 @@ audio.unlock();audio.unlock();assert.equal(contexts,1);audio.sync(s);assert.equa
 for(let i=0;i<8;i++)audio.sync(s);assert.equal(intervals.size,1,'duplicate music loops');
 audio.sync({...s,view:'snakeInput'});assert.equal(intervals.size,0);assert.ok(stopped>0);
 let before=started;audio.effect('shoot');assert.ok(started>before);
+before=started;audio.effect('fail');assert.ok(started-before>=4,'missing game-over melody');before=started;audio.effect('recordFail');assert.ok(started-before>=6,'missing new-record ending');
 before=started;audio.effect('meow');assert.equal(recordedStarted,1);assert.equal(started,before,'meow must use the real sample, not oscillators');assert.equal(buffers.length,1);assert.equal(buffers[0].sampleRate,22050);
 assert.equal(sandbox.window.RemoraMeowSamples.length,6);
 const voiceCount=audio.status().voices;

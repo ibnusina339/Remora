@@ -399,11 +399,11 @@
       for(const field of ['masterVolume','bgmVolume','sfxVolume'])state[field]=Math.max(0,Math.min(100,Number(state[field])||0));
       if(saved.sound===false&&saved.masterVolume==null)state.masterVolume=0;
       state.sound=state.masterVolume>0;
-      state.theme = ['AMBER','OCEAN'].includes(state.theme) ? state.theme : state.theme === 'GRAPHITE' ? 'OCEAN' : 'AMBER';
+      state.theme = ['AMBER','OCEAN','MONO'].includes(state.theme) ? state.theme : state.theme === 'GRAPHITE' ? 'OCEAN' : 'AMBER';
       const pixelUI = window.RemoraPixelUI.create(ctx, gameCatalog);
       const audio=window.RemoraAudio.create();
-      const ratings=window.RemoraRatings.create({state,storage:localStorage,profiles,save,home:goHome,now:()=>performance.now(),render});
-      const arcade = window.RemoraArcade.create({state, now:()=>performance.now(), later, cancel:stopTimers, render, save, say, tone:playTestTone,sfx:name=>audio.effect(name)});
+      const ratings=window.RemoraRatings.create({state,storage:localStorage,profiles,save,home:goHome,now:()=>performance.now(),render,later,sfx:name=>audio.effect(name)});
+      const arcade = window.RemoraArcade.create({state, now:()=>performance.now(), later, cancel:stopTimers, render, save, say, tone:playTestTone,sfx:name=>audio.effect(name),gameOver:info=>ratings.gameOver(info)});
       state.phraseCounters = state.phraseCounters && typeof state.phraseCounters === 'object' ? state.phraseCounters : {};
 
       function save() {
@@ -880,7 +880,9 @@
         save();
       }
       function startMode(mode) { arcade.start(mode); }
+      function currentSettingsItems(){return state.activeProfile===5&&state.developerUnlocked?[...settingsItems,'RATING PROMPT']:settingsItems;}
       function chooseSetting() {
+        if(state.selection===10&&state.activeProfile===5&&state.developerUnlocked){ratings.openPromptSettings();return;}
         state.view = ['sound', 'display', 'theme', 'leds', 'battery', 'profiles', 'network', 'system', 'stats', 'firstLoginConfirm'][state.selection];
         if(state.view==='profiles'){save();state.profileSelection=profiles.snapshot().active;}
         if (state.view === 'network'){state.networkSelection=0;state.networkSource='network';}
@@ -947,8 +949,8 @@
           else if(key===1||key===3){state.guidePage=Math.max(0,Math.min(state.guidePages-1,state.guidePage+(key===1?-1:1)));render();}
           else if (key === 6) openPregame();
         } else if (state.view === 'settings') {
-          if (key === 2) state.selection = (state.selection + settingsItems.length - 1) % settingsItems.length;
-          else if (key === 5) state.selection = (state.selection + 1) % settingsItems.length;
+          if (key === 2) state.selection = (state.selection + currentSettingsItems().length - 1) % currentSettingsItems().length;
+          else if (key === 5) state.selection = (state.selection + 1) % currentSettingsItems().length;
           else if (key === 4) { goHome(); return; }
           else if (key === 6) { chooseSetting(); return; }
           render();
@@ -1019,7 +1021,7 @@
           if (key === 4 || key === 6) { state.view = 'settings'; render(); return; }
           if (key !== 1 && key !== 3) return;
           const delta = key === 1 ? -1 : 1;
-          if (state.view === 'theme') state.theme = state.theme === 'AMBER' ? 'OCEAN' : 'AMBER';
+          if (state.view === 'theme') state.theme = ['AMBER','OCEAN','MONO'][(['AMBER','OCEAN','MONO'].indexOf(state.theme)+delta+3)%3];
           if (state.view === 'display') state.display = Math.max(10, Math.min(100, state.display + delta * 10));
           if (state.view === 'leds') state.leds = Math.max(10, Math.min(100, state.leds + delta * 10));
           save(); render();
