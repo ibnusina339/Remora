@@ -31,7 +31,7 @@
   Object.assign(F, {"a":"0000/0000/0110/0001/0111/1001/0111","b":"0000/1000/1000/1110/1001/1001/1110","c":"0000/0000/0111/1000/1000/1000/0111","d":"0000/0001/0001/0111/1001/1001/0111","e":"0000/0000/0110/1001/1111/1000/0111","f":"0000/0011/0100/1110/0100/0100/0100","g":"0000/0000/0111/1001/0111/0001/1110","h":"0000/1000/1000/1110/1001/1001/1001","i":"0000/0100/0000/1100/0100/0100/1110","j":"0000/0010/0000/0110/0010/1010/0100","k":"0000/1000/1000/1010/1100/1010/1001","l":"0000/1100/0100/0100/0100/0100/1110","m":"0000/0000/1101/1111/1001/1001/1001","n":"0000/0000/1110/1001/1001/1001/1001","o":"0000/0000/0110/1001/1001/1001/0110","p":"0000/0000/1110/1001/1110/1000/1000","q":"0000/0000/0111/1001/0111/0001/0001","r":"0000/0000/1011/1100/1000/1000/1000","s":"0000/0000/0111/1000/0110/0001/1110","t":"0000/0100/1110/0100/0100/0100/0011","u":"0000/0000/1001/1001/1001/1001/0111","v":"0000/0000/1001/1001/1001/0110/0110","w":"0000/0000/1001/1001/1111/1111/1001","x":"0000/0000/1001/0110/0110/0110/1001","y":"0000/0000/1001/1001/0111/0001/1110","z":"0000/0000/1111/0010/0100/1000/1111","\"":"0000/1001/1001/0000/0000/0000/0000","#":"0000/1001/1111/1001/1111/1001/1001","$":"0000/0110/1010/0110/0101/1100/0110","&":"0000/0100/1010/0100/1010/1001/0110","(":"0000/0010/0100/1000/1000/0100/0010",")":"0000/0100/0010/0001/0001/0010/0100",",":"0000/0000/0000/0000/0000/0100/1000",";":"0000/0000/0100/0000/0100/1000/0000","@":"0000/0110/1001/1101/1101/1000/0111","[":"0000/0110/0100/0100/0100/0100/0110","\\":"0000/1000/0100/0100/0010/0010/0001","]":"0000/0110/0010/0010/0010/0010/0110","^":"0000/0110/1001/0000/0000/0000/0000","`":"0000/0100/0010/0000/0000/0000/0000","{":"0000/0011/0100/1100/0100/0100/0011","|":"0000/0100/0100/0100/0100/0100/0100","}":"0000/1100/0010/0011/0010/0010/1100","~":"0000/0000/0110/1100/0000/0000/0000","✓":"0000/0000/0001/0001/1001/0110/0000","×":"0000/1001/0110/0110/1001/0000/0000"});
   const P={black:'#090b0d',bg:'#1c1711',panel:'#30261a',paper:'#f4ebd6',amber:'#ffbc68',dim:'#b39a78',line:'#68543c',green:'#8bdcad',red:'#ff797d',cyan:'#75d9e8',purple:'#c49bef',yellow:'#ffd76b',blue:'#79acfa'};
   const keys=root.RemoraArcade.keyColors, keyNames=root.RemoraArcade.keyNames, directionBase=root.RemoraArcade.directionBase;
-  const games=[...root.RemoraArcade.catalog.map(g=>g.name),'SETTINGS'];
+  const games=[...root.RemoraArcade.catalog.map(g=>g.name),'RATE ME','SETTINGS'];
   const levels=['EASY','NORMAL','HARD','EXPERT','MASTER'];
   const difficultyNotes=['PELAN DAN SANTAI','TEMPO SEIMBANG','SPEED AKTIF','SPEED LEBIH CEPAT','SPEED MAKSIMAL'];
   function create(ctx, catalog) {
@@ -186,9 +186,51 @@
       poly(pts.map(([u,v])=>{const rotated=[[u,v],[-v,u],[-u,-v],[v,-u]][dir%4];return [x+rotated[0]*k,y+rotated[1]*k];}),c);
     }
     function ground(){line(16,199,303,199,P.line);}
+    function ratingStars(units,cx,y,k=2){
+      const rows=['......#......','.....###.....','.....###.....','....#####....','#############','.###########.','..#########..','...#######...','...#######...','..####.####..','..###...###..','.##.......##.','.#.........#.'];
+      const gap=5*k,w=13*k,left=Math.round(cx-(w*5+gap*4)/2);
+      for(let i=0;i<5;i++)for(let yy=0;yy<13;yy++)for(let xx=0;xx<13;xx++)if(rows[yy][xx]==='#'){
+        const edge=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>rows[yy+dy]?.[xx+dx]!=='#'),fill=units>=i*2+2||(units===i*2+1&&xx<7);
+        if(edge||fill)rect(left+i*(w+gap)+xx*k,y+yy*k,k,k,fill?P.amber:P.line);
+      }
+    }
+    function ratingView(v){
+      const content=root.RemoraRatings;
+      if(v==='rateMenu')list('RATE ME',['RATE GAME','RATE REMORA'],s.rateSelection);
+      else if(v==='rateGames')list('PILIH GAME',catalog.map(g=>g.name),s.rateSelection);
+      else if(v==='devGate'){header('XDAXA');catSprite('sit',160,112,false,.65);text('AKSES DEVELOPER',160,134,2,P.paper,'center');smallText('MASUKKAN KODE AKSES',160,169,P.dim,'center');footer([null,null,null,'BACK']);}
+      else if(v==='ratingStars'){
+        header(s.rateKind<0?'RATE REMORA':'RATE GAME');
+        smallText(s.rateKind<0?'ASPEK '+(s.rateQuestion+1)+' / 5':catalog[s.rateKind].name,160,35,P.dim,'center');
+        rect(12,51,296,147,P.panel);
+        const prompt=s.rateKind<0?content.questions[s.rateQuestion]:'SEBERAPA SERU GAME INI?';
+        const words=prompt.split(' '),lines=[''];for(const word of words){let i=lines.length-1;if((lines[i]+' '+word).trim().length>23)lines.push(word);else lines[i]=(lines[i]+' '+word).trim();}
+        lines.forEach((row,i)=>text(row,160,65+i*18,2,P.paper,'center'));
+        const n=s.rateStars[s.rateQuestion];ratingStars(n,160,112);text(n?(n/2).toFixed(1)+' / 5':'BELUM DIISI',160,150,2,n?P.amber:P.dim,'center');
+        smallText(s.rateHint||'MINIMAL 0.5 / MAKSIMAL 5 BINTANG',160,183,s.rateHint?P.red:P.dim,'center');footer(['- 0.5',null,'+ 0.5','BACK',null,'LANJUT']);
+      }else if(v==='ratingSuggestions'){
+        header('SARAN / '+s.rateSuggestions.toString(2).replace(/0/g,'').length+' DARI 2');
+        const first=Math.min(Math.max(0,s.rateSelection-1),3);
+        content.suggestions.slice(first,first+4).forEach((item,i)=>{const index=first+i,y=39+i*38,selected=index===s.rateSelection;rect(12,y,296,34,selected?P.amber:P.panel);frame(21,y+10,13,13,selected?P.black:P.line);if(s.rateSuggestions&(1<<index))rect(24,y+13,7,7,selected?P.black:P.paper);smallText(item,43,y+12,selected?P.black:P.paper,'left',251);});
+        smallText(s.rateHint||'OPSIONAL / PILIH MAKSIMAL DUA',160,196,s.rateHint?P.red:P.dim,'center');footer([null,'UP','SIMPAN','BACK','DOWN','PILIH']);
+      }else if(v==='ratingThanks'){
+        header('RATE ME');ratingStars(10,160,42,1);
+        const lines=['TERIMAKASIH SUDAH','KASIH RATING BUAT REMORA,','SEGALA MASUKAN','SANGAT BERARTI'];
+        lines.forEach((row,i)=>text(row,160,82+i*24,2,P.paper,'center'));footer([null,null,null,'BACK',null,'SELESAI']);
+      }else if(v==='rateResults')list('HASIL RATING',['RATING GAME','RATING REMORA'],s.rateSelection);
+      else if(v==='rateArchive'){
+        if(!s.rateRecords.length)detail('HASIL RATING','BELUM ADA','RATING TERSIMPAN AKAN MUNCUL DI SINI','stats',[null,null,null,'BACK']);
+        else list(s.rateFilter===0?'RATING GAME':'RATING REMORA',s.rateRecords.map(r=>'RATE '+r.id+' / '+r.profileName),s.rateSelection);
+      }else if(v==='rateReport'){
+        header('HASIL RATING');s.rateReportRows.slice(s.rateScroll,s.rateScroll+5).forEach((row,i)=>{const y=43+i*31;if(row.startsWith('STARS:')){const n=Number(row.slice(6));ratingStars(n,105,y,1);smallText((n/2).toFixed(1)+' / 5',180,y+2,P.amber);}else smallText(row,18,y+4,P.paper,'left',282);});
+        const length=s.rateReportRows.length;frame(309,40,3,154,P.line);rect(309,40+Math.round(s.rateScroll/Math.max(1,length-5)*134),3,20,P.amber);footer([null,'UP',null,'BACK','DOWN']);
+      }
+    }
+
     function scene(which){
       const phase=Math.floor((s.animationTime||0)/350)%6;
       ground();
+      if(which===catalog.length){ratingStars(10,104,112);centeredSprite('happy',254,190);smallText('SUARAMU BERARTI',104,162,P.dim,'center');return;}
       if(which===0){
         const time=s.animationTime||0,cycle=Math.floor(time/2800),elapsed=time%2800;
         if(cycle!==classicPreviewCycle){
@@ -493,7 +535,8 @@
       else if(v==='pregame')pregame();
       else if(v==='gameInfo')info();
       else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILES','NETWORK','SYSTEM','STATS','FIRST LOGIN'],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
-      else if(v==='profiles')list('PROFILES / 5 SLOTS',s.profiles.map((p,i)=>p?(i===s.activeProfile?'> ':'')+p.playerName:'+ ADD PLAYER'),s.profileSelection);
+      else if(root.RemoraRatings&&['rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','devGate','rateResults','rateArchive','rateReport'].includes(v))ratingView(v);
+      else if(v==='profiles')list('5 PEMAIN + DEVELOPER',s.profiles.map((p,i)=>p?(i===s.activeProfile?'> ':'')+p.playerName:'+ ADD PLAYER'),s.profileSelection);
       else if(v==='profileAction')list('PLAYER',['SWITCH USER','EDIT NAME','DELETE USER'],s.profileAction);
       else if(v==='deleteProfile')detail('HAPUS PEMAIN?',s.profiles[s.profileTarget]?.playerName||'','REKOR PEMAIN INI AKAN DIHAPUS','profile',[null,null,null,'BATAL',null,'HAPUS']);
       else if(v==='firstLoginConfirm')detail('FIRST LOGIN','PEMAIN BARU','PROFIL LAMA TETAP TERSIMPAN','profile',[null,null,null,'BATAL',null,'YA']);

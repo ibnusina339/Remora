@@ -22,7 +22,8 @@ static void event(void*,esp_event_base_t base,int32_t id,void*){
 }
 void networkInit(){if(initialized)return;ESP_ERROR_CHECK(esp_netif_init());ESP_ERROR_CHECK(esp_event_loop_create_default());esp_netif_create_default_wifi_sta();esp_netif_create_default_wifi_ap();wifi_init_config_t cfg=WIFI_INIT_CONFIG_DEFAULT();ESP_ERROR_CHECK(esp_wifi_init(&cfg));esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,event,nullptr);esp_event_handler_register(IP_EVENT,IP_EVENT_STA_GOT_IP,event,nullptr);initialized=true;}
 void networkScan(){
- if(scanRunning)return;networkInit();
+ if(scanRunning){return;}
+ networkInit();
  if(!started||portal){networkStop();auto err=esp_wifi_set_mode(WIFI_MODE_STA);if(err==ESP_OK)err=esp_wifi_start();if(err!=ESP_OK){std::lock_guard<std::mutex>l(mutex);scanMessage="WIFI BELUM SIAP. SCAN LAGI.";return;}started=true;}
  {std::lock_guard<std::mutex>l(mutex);scanResults.clear();scanMessage="MEMINDAI...";scanRunning=true;}
  wifi_scan_config_t config{};config.show_hidden=false;auto err=esp_wifi_scan_start(&config,false);

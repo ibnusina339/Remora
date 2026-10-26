@@ -10,11 +10,11 @@ function settings(){app.show({power:'on',view:'settings',mode:null,tutorialStep:
 function add(name){settings();app.show({selection:9});app.press(6);app.press(6);assert.equal(app.state().view,'firstLoginCountdown');app.advance(3020);assert.equal(app.state().power,'standby');app.down(1);app.down(3);app.advance(2020);app.up(1);app.up(3);app.advance(2500);assert.equal(app.state().view,'nameEditor');app.show({nameChars:[name,...Array(6).fill(null)]});app.press(6);assert.equal(app.state().playerName,name);assert.equal(app.state().tutorialStep,0);app.down(4);app.down(6);app.advance(3020);app.up(4);app.up(6);}
 app.show({records:{'classic:2':1234},masterVolume:20});settings();app.show({selection:5});app.press(6);app.press(4);
 for(const name of ['B','C','D','E'])add(name);
-assert.equal(app.state().profiles.filter(Boolean).length,5);
-settings();app.show({selection:9});app.press(6);app.press(6);assert.equal(app.state().view,'slotsFull');assert.equal(app.state().profiles.filter(Boolean).length,5);
+assert.equal(app.state().profiles.slice(0,5).filter(Boolean).length,5);
+settings();app.show({selection:9});app.press(6);app.press(6);assert.equal(app.state().view,'slotsFull');assert.equal(app.state().profiles.slice(0,5).filter(Boolean).length,5);
 app.press(6);app.show({profileSelection:0});app.press(6);app.press(6);assert.equal(app.state().playerName,'A');assert.equal(app.state().records['classic:2'],1234);assert.equal(app.state().masterVolume,20);
-settings();app.show({selection:5});app.press(6);app.show({profileSelection:4});app.press(6);app.press(5);app.press(5);app.press(6);assert.equal(app.state().view,'deleteProfile');app.press(6);assert.equal(app.state().profiles.filter(Boolean).length,4);
-add('F');assert.equal(app.state().profiles.filter(Boolean).length,5);
+settings();app.show({selection:5});app.press(6);app.show({profileSelection:4});app.press(6);app.press(5);app.press(5);app.press(6);assert.equal(app.state().view,'deleteProfile');app.press(6);assert.equal(app.state().profiles.slice(0,5).filter(Boolean).length,4);
+add('F');assert.equal(app.state().profiles.slice(0,5).filter(Boolean).length,5);
 const reloaded=launch(app.store);reloaded.boot();assert.equal(reloaded.state().playerName,'F');assert.equal(reloaded.state().tutorialStep,-1);
 // Pending SPI survives a crash but the unconfirmed clock does not.
 reloaded.show({view:'display',displaySelection:1});reloaded.press(3);assert.equal(reloaded.state().spiTrial,true);

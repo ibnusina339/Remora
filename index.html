@@ -279,6 +279,7 @@
   <script src="assets/remora-display-settings.js"></script>
   <script src="assets/remora-profiles.js"></script>
   <script src="assets/remora-tutorial.js"></script>
+  <script src="assets/remora-ratings.js"></script>
   <script src="assets/remora-pixel-ui.js"></script>
   <script>
     (() => {
@@ -401,6 +402,7 @@
       state.theme = ['AMBER','OCEAN'].includes(state.theme) ? state.theme : state.theme === 'GRAPHITE' ? 'OCEAN' : 'AMBER';
       const pixelUI = window.RemoraPixelUI.create(ctx, gameCatalog);
       const audio=window.RemoraAudio.create();
+      const ratings=window.RemoraRatings.create({state,storage:localStorage,profiles,save,home:goHome,now:()=>performance.now(),render});
       const arcade = window.RemoraArcade.create({state, now:()=>performance.now(), later, cancel:stopTimers, render, save, say, tone:playTestTone,sfx:name=>audio.effect(name)});
       state.phraseCounters = state.phraseCounters && typeof state.phraseCounters === 'object' ? state.phraseCounters : {};
 
@@ -595,6 +597,7 @@
       }
       function powerOn(){audio.unlock();state.power='standby';suspendedView=null;powerPrevious='off';applyPowerPhase(powerPolicy.begin(performance.now(),powerInput()));render();}
       function bootUi() {
+        profiles.lockDeveloper(state);state.developerUnlocked=false;
         audio.unlock();
         stopTimers(); stopAnimation(); cancelBatterySleep();
         state.power = 'boot';
@@ -640,6 +643,7 @@
         return [...bytes].map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase();
       }
       function startNameEditor(purpose,returnView=purpose==='change'?'profile':null) {
+        if(profiles.snapshot().active===5&&purpose==='change'){state.view='profiles';render();return;}
         clearNameCancelHold();state.nameReturnView=returnView;
         state.namePurpose = purpose;
         state.nameChars = Array(7).fill(null);
@@ -660,6 +664,7 @@
       }
       function savePlayerName() {
         const name = state.nameChars.map(char => char === null ? '' : char).join('').trim();
+        if(name==='XDAXA'){state.nameError='NAMA KHUSUS DEVELOPER';render();return;}
         if (!/^[A-Z0-9_ -]{1,7}$/.test(name)) {
           state.nameError = 'NAME REQUIRED'; render(); say('Nama harus satu sampai tujuh karakter'); return;
         }
@@ -708,9 +713,9 @@
       }
       function profilePress(key){
         if(state.view==='profiles'){
-          if(key===2||key===5)state.profileSelection=(state.profileSelection+(key===2?4:1))%5;
+          if(key===2||key===5)state.profileSelection=(state.profileSelection+(key===2?5:1))%6;
           else if(key===4)state.view='settings';
-          else if(key===6){state.profileTarget=state.profileSelection;if(profiles.snapshot().profiles[state.profileTarget]){state.profileAction=0;state.view='profileAction';}else startNameEditor('first','profiles');}
+          else if(key===6){state.profileTarget=state.profileSelection;if(state.profileTarget===5){ratings.gate();return;}if(profiles.snapshot().profiles[state.profileTarget]){state.profileAction=0;state.view='profileAction';}else startNameEditor('first','profiles');}
         }else if(state.view==='profileAction'){
           if(key===2||key===5)state.profileAction=(state.profileAction+(key===2?2:1))%3;
           else if(key===4)state.view='profiles';
@@ -905,6 +910,8 @@
         audio.unlock();
         if(shutdownContext){if(state.view==='shutdownConfirm'){if(key===4){resumeShutdownContext();render();}else if(key===6){resumeShutdownContext(false);powerOff(true);}}return;}
         if(state.tutorialStep>=0){tutorialPress(key);return;}
+        if(ratings.press(key))return;
+        if(state.view==='stats'&&ratings.statsKey(key))return;
         if(['profiles','profileAction','deleteProfile','firstLoginConfirm','slotsFull'].includes(state.view)){profilePress(key);return;}
         if(state.view==='firstLoginCountdown')return;
         if(state.view==='secretCat'){
@@ -921,14 +928,15 @@
         state.pressedKey = key; render();
         setTimeout(() => { if (state.pressedKey === key) { state.pressedKey = 0; render(); } }, 130);
         if (state.view === 'home' || state.view === 'modeSelect') {
-          const count = gameCatalog.length + 1;
+          const count = gameCatalog.length + 2;
           if (key === 1 || key === 3) state.modeSelection = (state.modeSelection + (key === 1 ? count - 1 : 1)) % count;
           else if (key === 2 && state.modeSelection < gameCatalog.length) {state.guidePage=0;state.view = 'gameInfo';}
           else if (key === 6) {
-            if (state.modeSelection === gameCatalog.length) { state.view = 'settings'; state.selection = 0; }
+            if (state.modeSelection === gameCatalog.length) { ratings.open();return; }
+            else if (state.modeSelection === gameCatalog.length+1) { state.view = 'settings'; state.selection = 0; }
             else { openPregame(); return; }
           }
-          render(); say(state.modeSelection === gameCatalog.length ? 'Settings' : gameCatalog[state.modeSelection].name);
+          render(); say(state.modeSelection === gameCatalog.length+1 ? 'Settings' : state.modeSelection===gameCatalog.length?'Rate Me':gameCatalog[state.modeSelection].name);
         } else if (state.view === 'pregame') {
           if (key === 1 || key === 3) { state.difficulty = Math.max(0, Math.min(4, state.difficulty + (key === 1 ? -1 : 1)));state.difficultyByGame[gameCatalog[state.modeSelection].mode]=state.difficulty; save(); }
           else if (key === 4) { goHome(); return; }

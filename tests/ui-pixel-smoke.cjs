@@ -4,11 +4,11 @@ const {launch}=require('./pixel-harness.cjs');
 const fresh=()=>{const app=launch();app.boot();return app;};
 const menu=fresh();
 assert.equal(menu.state().view,'home');
-for(let i=0;i<12;i++){assert.equal(menu.state().modeSelection,i);menu.press(3);}
+for(let i=0;i<13;i++){assert.equal(menu.state().modeSelection,i);menu.press(3);}
 assert.equal(menu.state().modeSelection,0);
-menu.press(1);assert.equal(menu.state().modeSelection,11);
+menu.press(1);assert.equal(menu.state().modeSelection,12);
 menu.press(6);assert.equal(menu.state().view,'settings');
-menu.press(4);assert.equal(menu.state().view,'home');assert.equal(menu.state().modeSelection,11);
+menu.press(4);assert.equal(menu.state().view,'home');assert.equal(menu.state().modeSelection,12);
 menu.press(3);assert.equal(menu.state().modeSelection,0);
 for(let index=0;index<11;index++){
   const app=fresh();for(let i=0;i<index;i++)app.press(3);
@@ -71,7 +71,7 @@ const before=region();animated.advance(4000-animated.state().animationTime%4200)
 animated.setBattery(4);const cross=Buffer.from(animated.pixels);animated.setCharging(true);assert.notDeepEqual(animated.pixels,cross);
 // Every new screen draws inside the native 320x240 bounds, using integer pixels.
 const render=fresh();
-const pages=[...Array.from({length:12},(_,modeSelection)=>({view:'home',modeSelection})),
+const pages=[...Array.from({length:13},(_,modeSelection)=>({view:'home',modeSelection})),
   ...Array.from({length:5},(_,difficulty)=>({view:'pregame',modeSelection:0,difficulty})),
   ...Array.from({length:9},(_,selection)=>({view:'settings',selection})),
   ...['chargeRequired','gameInfo','battery','stats','profile','nameEditor','wifiScan','network','system','diagnostics','displayTest','buttonTest','speakerTest','ledTest','sound','display','leds','theme','phoneSetup','textEntry','wifiNotSet','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].map(view=>({view,modeSelection:0}))];
@@ -145,7 +145,7 @@ assert.doesNotMatch(fs.readFileSync('assets/remora-pixel-ui.js','utf8'),/drawIma
 // Visible maps start immediately; fog modes retain their actual memory phase.
 for(const difficulty of [0,1,2,3,4]){const app=fresh();app.show({difficulty});app.test.arcade.start('maze');assert.equal(app.state().view,difficulty<2?'mazeInput':'mazePreview');assert.equal(app.state().game.mapVisible,true);}
 const shutdown=fresh();shutdown.power();assert.equal(shutdown.state().power,'shutdown');shutdown.advance(1100);assert.equal(shutdown.state().power,'shutdown');assert.ok(shutdown.pixels.some(v=>v>0));shutdown.advance(1000);assert.equal(shutdown.state().power,'shutdown');shutdown.advance(500);assert.equal(shutdown.state().power,'off');assert.ok(shutdown.pixels.every(v=>v===0));
-const mixer=fresh();mixer.press(1);mixer.press(6);mixer.press(6);for(let i=0;i<12;i++)mixer.press(1);assert.equal(mixer.state().masterVolume,0);for(let i=0;i<12;i++)mixer.press(3);assert.equal(mixer.state().masterVolume,100);const reloaded=launch(mixer.store);assert.equal(reloaded.state().masterVolume,100);
+const mixer=fresh();mixer.press(1);mixer.press(6);mixer.press(6);for(let i=0;i<13;i++)mixer.press(1);assert.equal(mixer.state().masterVolume,0);for(let i=0;i<13;i++)mixer.press(3);assert.equal(mixer.state().masterVolume,100);const reloaded=launch(mixer.store);assert.equal(reloaded.state().masterVolume,100);
 // Paddle movement stops on release.
 for(const mode of ['pong']){
   const app=fresh();app.test.arcade.start(mode);const x=app.state().game.playerX;

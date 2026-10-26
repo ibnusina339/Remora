@@ -25,7 +25,9 @@ Target: ESP32-C6FH4 flash 4 MB, TFT ST7789V 320×240, enam SK6812 MINI-E, PAM830
 - SPI 10 MHz default, trial 16/20/26/40 MHz, konfirmasi 15 detik, fallback setelah timeout/error/reset saat trial. FPS hardware diukur pada perangkat.
 - OTA GitHub Releases dengan Semantic Versioning, SHA-256, dua slot aplikasi, boot rollback dan partisi profil terpisah.
 
-Mulai v0.1.1 tersedia tutorial lebih ringkas, kontrol Snake KEY2/5/6/4 dan pilihan SCAN WIFI pada menu Settings → Network. Wi-Fi dipindai setelah memilih Scan, tanpa input nama jaringan manual pada perangkat. Simulator menampilkan contoh jaringan; pemindaian asli berjalan di firmware ESP32. Lihat [catatan v0.1.1](docs/releases/v0.1.1.md).
+Mulai v0.2.0 tersedia tutorial lebih ringkas, kontrol Snake KEY2/5/6/4 dan pilihan SCAN WIFI pada menu Settings → Network. Wi-Fi dipindai setelah memilih Scan, tanpa input nama jaringan manual pada perangkat. Simulator menampilkan contoh jaringan; pemindaian asli berjalan di firmware ESP32. Lihat [catatan v0.2.0](docs/releases/v0.2.0.md).
+
+- **Rate Me:** rating setengah bintang untuk setiap game dan lima aspek Remora; saran maksimal dua. Lima profil pemain ditambah XDAXA yang dilindungi kode akses. [Panduan rating](docs/RATINGS.md).
 
 ## Dokumentasi
 

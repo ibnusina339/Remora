@@ -9,7 +9,7 @@ Repo publik: [ibnusina339/Remora](https://github.com/ibnusina339/Remora). Perang
 
 Captive portal tidak mengatasi halaman login Wi-Fi publik. Jaringan tanpa password dapat langsung dipakai bila menyediakan koneksi internet tanpa portal tambahan. Wi-Fi membutuhkan DNS/HTTPS GitHub yang dapat diakses. Waktu perangkat disinkronkan melalui SNTP sebelum HTTPS; jika NTP tidak terjangkau, perangkat meminta mencoba lagi. TLS memverifikasi sertifikat lewat CA bundle.
 
-**Mulai v0.1.1:** Settings → Network membuka menu tanpa memindai otomatis. Pilih SCAN WIFI, lalu pilih jaringan dan isi password hanya jika terkunci. Jaringan terbuka langsung disambungkan. Input nama Wi-Fi manual pada perangkat dihapus; Phone Setup, koneksi tersimpan dan OTA tetap tersedia pada menu Network. Simulator memakai daftar jaringan contoh berlabel SIMULASI; firmware ESP32 melakukan pemindaian asli. Pengujian pada perangkat fisik tetap diperlukan.
+**Mulai v0.2.0:** Settings → Network membuka menu tanpa memindai otomatis. Pilih SCAN WIFI, lalu pilih jaringan dan isi password hanya jika terkunci. Jaringan terbuka langsung disambungkan. Input nama Wi-Fi manual pada perangkat dihapus; Phone Setup, koneksi tersimpan dan OTA tetap tersedia pada menu Network. Simulator memakai daftar jaringan contoh berlabel SIMULASI; firmware ESP32 melakukan pemindaian asli. Pengujian pada perangkat fisik tetap diperlukan.
 
 ## Versi dan berkas
 

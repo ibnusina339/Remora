@@ -15,9 +15,9 @@ for(const keyboard of [false,true]){
   input.tap(4);assert.equal(app.state().view,'nameEditor');assert.equal(app.state().nameChars.filter(c=>c!==null).length,1);
   // Hold cancel discards the remaining draft and must not leak a click into the list.
   input.down(4);app.advance(999);assert.equal(app.state().view,'nameEditor');app.advance(1);input.up(4);assert.equal(app.state().view,'profiles');
-  assert.equal(app.state().playerName,original);assert.equal(app.state().profiles.filter(Boolean).length,1);assert.equal(app.store.extra['remora-profiles'],saved);
+  assert.equal(app.state().playerName,original);assert.equal(app.state().profiles.slice(0,5).filter(Boolean).length,1);assert.equal(app.store.extra['remora-profiles'],saved);
   input.tap(6);input.tap(5);app.document.listeners.keydown[0]({key:'Escape',preventDefault(){}});assert.equal(app.state().view,'profiles');assert.equal(app.store.extra['remora-profiles'],saved);
   // Saving still creates one user and starts their tutorial after cancellation attempts.
-  input.tap(6);input.tap(5);input.tap(6);assert.equal(app.state().tutorialStep,0);assert.equal(app.state().profiles.filter(Boolean).length,2);
+  input.tap(6);input.tap(5);input.tap(6);assert.equal(app.state().tutorialStep,0);assert.equal(app.state().profiles.slice(0,5).filter(Boolean).length,2);
 }
 console.log('Profiles: blank cancel, short delete, held cancel, Escape, no slot/data changes and successful save via pointer/numpad OK');

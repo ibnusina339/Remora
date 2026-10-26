@@ -4,6 +4,8 @@ REMORA menyimpan **maksimal lima profil di flash ESP32-C6**, tanpa akun, GitHub 
 
 Setiap profil memuat nama, rekor semua game pada lima Difficulty, statistik bermain, status tutorial, pilihan Difficulty per game, volume utama/BGM/SFX, kecerahan, tema dan intensitas LED. SPI clock adalah pengaturan perangkat, tidak ikut berpindah profil.
 
+Mulai v0.2.0 ada satu profil developer tambahan, XDAXA, di luar lima slot pemain. Profil ini selalu berada di baris paling bawah, tidak bisa dihapus/diganti nama, dan membutuhkan kode akses. Lihat [RATINGS.md](RATINGS.md).
+
 ## Pemain baru
 
 1. Settings → First Login → konfirmasi.
@@ -14,7 +16,7 @@ Setiap profil memuat nama, rekor semua game pada lima Difficulty, statistik berm
 
 Profil lama tetap tersimpan. Saat kelima slot terisi, konfirmasi First Login ditolak dan layar meminta menghapus satu profil lewat Settings → Profiles. Menghapus profil memerlukan konfirmasi; hanya data profil pilihan yang dihapus. Menambah dari slot kosong juga membuka penamaan dan tutorial.
 
-Tutorial menggunakan kotak dialog dengan teks muncul bertahap. Pendampingnya kucing duduk biasa **tanpa lidah**. Tekan hijau saat teks belum selesai untuk menampilkan seluruh pesan. Mulai v0.1.1, dialog lebih kecil, teks rata tengah dan tidak memakai label nama pendamping. Setelah teks lengkap, hijau menutup pesan agar layar praktik terlihat penuh. Pesan muncul kembali saat langkah berikutnya; tombol berwarna yang disebutkan melanjutkan latihan. Pintasan rahasia: tahan **kiri bawah + kanan bawah / KEY4 + KEY6 selama tiga detik**. Pintasan hanya berlaku saat tutorial.
+Tutorial menggunakan kotak dialog dengan teks muncul bertahap. Pendampingnya kucing duduk biasa **tanpa lidah**. Tekan hijau saat teks belum selesai untuk menampilkan seluruh pesan. Mulai v0.2.0, dialog lebih kecil, teks rata tengah dan tidak memakai label nama pendamping. Setelah teks lengkap, hijau menutup pesan agar layar praktik terlihat penuh. Pesan muncul kembali saat langkah berikutnya; tombol berwarna yang disebutkan melanjutkan latihan. Pintasan rahasia: tahan **kiri bawah + kanan bawah / KEY4 + KEY6 selama tiga detik**. Pintasan hanya berlaku saat tutorial.
 
 Pada firmware, picker nama memakai ungu/kuning untuk kelompok karakter, cyan/biru untuk karakter sebelumnya/berikutnya, merah untuk hapus, hijau untuk tambah. **Tahan hijau untuk menyimpan**. Simulator memakai picker tujuh kotak; hijau menyimpan nama.
 

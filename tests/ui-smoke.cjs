@@ -6,3 +6,5 @@ require('./cat-placements-smoke.cjs');
 require('./input-shortcuts-smoke.cjs');
 require('./profile-cancel-smoke.cjs');
 require('./tutorial-snake-wifi-smoke.cjs');
+
+require('./ratings-smoke.cjs');

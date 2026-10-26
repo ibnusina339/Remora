@@ -10,17 +10,17 @@
 namespace remora {
 inline constexpr int Keys[]={1,2,3,4,6,7};
 inline constexpr int HoldPin=14,PeripheralPin=15,UsbPin=8,AdcPin=0,AudioPin=16,VibrationPin=17,TftClock=18,TftMosi=19,TftDc=20,TftReset=5;
-inline constexpr int ProfileCount=5;
+inline constexpr int UserProfileCount=5,DeveloperSlot=5,ProfileCount=6;
 struct UserProfile {
- bool used=false,tutorialDone=false;uint8_t difficulty[GameCount]{};int records[GameCount][5]{};uint32_t phraseCounters[GameCount]{};
+ uint32_t id=0;bool used=false,tutorialDone=false;uint8_t difficulty[GameCount]{};int records[GameCount][5]{};uint32_t phraseCounters[GameCount]{};
  int master=70,bgm=35,sfx=75,brightness=100,leds=60;bool ocean=false;char player[8]="PLAYER";uint32_t games=0,wins=0;
 };
 struct Preferences:UserProfile {
  UserProfile profiles[ProfileCount];int active=0,spiMHz=10;bool spiPending=false,firstLoginPending=true;
  int resumeMode=-1,resumeDifficulty=1,resumeLevel=0,resumeScore=0,resumeClears=0;
 };
-Preferences defaults();void load(Preferences&);void save(Preferences&);
-bool switchProfile(Preferences&,int);bool addProfile(Preferences&,int);bool removeProfile(Preferences&,int);
+Preferences defaults();void load(Preferences&);void save(Preferences&);void lockDeveloper(Preferences&);
+bool switchProfile(Preferences&,int,bool developer=false);bool addProfile(Preferences&,int);bool removeProfile(Preferences&,int);
 struct Battery {int mv=0,percent=0;bool valid=false,critical=false;};
 void earlyInit();uint8_t readKeys();bool usbPresent();Battery sampleBattery();
 void peripherals(bool on);bool peripheralsOn();void fullCutoff();void standbySleep();

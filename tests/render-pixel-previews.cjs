@@ -3,7 +3,7 @@ const path=require('node:path');
 const {launch,png}=require('./pixel-harness.cjs');
 const target=path.resolve(__dirname,'../previews');fs.mkdirSync(target,{recursive:true});
 const app=launch();app.boot();const base=app.state();
-const pages=[...Array.from({length:12},(_,modeSelection)=>({view:'home',modeSelection})),
+const pages=[...Array.from({length:13},(_,modeSelection)=>({view:'home',modeSelection})),
   {view:'pregame',modeSelection:0},{view:'pregame',modeSelection:0,difficulty:2},
   {view:'settings',selection:0},{view:'battery'},
   {view:'chargeRequired',batteryPercent:4},{view:'chargeRequired',batteryPercent:4,charging:true},
