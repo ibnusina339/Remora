@@ -85,7 +85,7 @@ inline int esp_netif_sntp_init(esp_sntp_config_t*) { return ESP_OK; }
 inline int esp_netif_sntp_sync_wait(int) { if(fixture::ntpOk)fixture::clock=1800000000;return fixture::ntpOk?ESP_OK:ESP_FAIL; }
 inline void esp_netif_sntp_deinit() {}
 // Linux linker redirects only time(), avoiding preprocessor changes to std headers.
-extern "C" inline time_t __wrap_time(time_t* out) { if(out)*out=fixture::clock;return fixture::clock; }
+extern "C" time_t __wrap_time(time_t* out) { if(out)*out=fixture::clock;return fixture::clock; }
 
 inline int esp_crt_bundle_attach(void*) { return ESP_OK; }
 struct esp_http_client_config_t {
