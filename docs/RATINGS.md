@@ -31,7 +31,7 @@ Ajakan opsional menunggu 2,8 detik setelah game over. Pemain bisa memilih Nanti 
 Profil bersama bisa mendapat ajakan berulang, termasuk game yang sudah dinilai. Tidak ada lagi batas sekali seumur profil/game. Setiap pengiriman menjadi Rate baru; rating sebelumnya tetap utuh, dengan nama dan ID profil yang sama.
 
 - Ajakan berkala pada game/profil yang sama: minimal 12 game tambahan dan 30 menit sejak ajakan atau rating terakhir.
-- Jalur perubahan performa: bandingkan rata-rata tiga hasil terkini dengan tiga hasil baseline pada game dan difficulty yang sama. Perlu selisih minimal 600 poin per game serta perubahan minimal dua kali lipat, ke atas maupun ke bawah. Satu hasil menyimpang tidak cukup.
+- Jalur perubahan performa: bandingkan rata-rata tiga hasil terkini dengan tiga hasil baseline pada game dan difficulty yang sama. Perlu selisih minimal 600 poin per game serta perubahan minimal dua kali lipat, ke atas maupun ke bawah. Ketiga hasil baru harus searah: semuanya minimal 25% lebih tinggi dari baseline atau semuanya minimal 25% lebih rendah. Satu hasil menyimpang tidak cukup.
 - Bila perubahan terdeteksi, ajakan boleh muncul setelah enam game tambahan dan sepuluh menit. Hasil rendah juga boleh mendapat ajakan jika penurunan konsisten terdeteksi. Petunjuk perubahan kedaluwarsa setelah enam hasil berikutnya.
 - Ganti difficulty memulai ulang pembandingan skor; hasil antar-game dan antar-profil tidak dicampur. Baseline menyesuaikan perlahan untuk perubahan kecil.
 - Rating manual juga mengatur ulang jeda ajakan game tersebut. Rate Me manual tetap dapat digunakan kapan saja, tanpa menunggu jeda.

@@ -15,6 +15,7 @@ static void testRatingPrompts(){
  for(int i=0;i<3;i++){changed.observe(1,100);}assert(changed.changed());
  assert(!changed.ready(599999));assert(changed.ready(600000));
  policy.completed=30;assert(policy.eligible(100,0,false,false,600000,changed));changed.shown(600000);assert(!changed.changed());
+ RatingPlayStats spike;for(int i=0;i<3;i++){spike.observe(1,1000);}spike.observe(1,100000);spike.observe(1,1000);spike.observe(1,1000);assert(!spike.changed());
  RatingPlayStats difficulty;for(int i=0;i<3;i++){difficulty.observe(1,2000);}difficulty.shown(0);
  for(int i=0;i<6;i++){difficulty.observe(3,100);}assert(!difficulty.changed());assert(!difficulty.ready(600000));
  auto reboot=play;reboot.lastAskAt=-1;reboot.shown(0);reboot.lastAskAt=-1;

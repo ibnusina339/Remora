@@ -18,6 +18,9 @@ const records=JSON.parse(a.data['remora-ratings']);assert.equal(records.length,2
 const b=harness();b.finish(2000);b.finish(2000);assert.ok(b.finish(2000));b.decline();b.time(600000);
 assert.ok(!b.finish(0,'classic',1,0));assert.ok(!b.finish(2000));assert.ok(!b.finish(2000),'one outlier triggered a change');
 assert.ok(!b.finish(100,'classic',1,0));assert.ok(!b.finish(100,'classic',1,0));assert.ok(b.finish(100,'classic',1,0),'consistent lower scores never invited');b.decline();
+// One unusually high score cannot masquerade as three consistently changed results.
+const spike=harness();spike.finish();spike.finish();spike.finish();spike.decline();spike.time(600000);
+assert.ok(!spike.finish(100000));assert.ok(!spike.finish(1000));assert.ok(!spike.finish(1000));assert.equal(spike.lane().changeAt,0);
 // A stable improvement is also a hint, only after all cooldowns.
 const c=harness();c.finish();c.finish();c.finish();c.decline();c.time(599999);
 for(let i=0;i<6;i++)assert.ok(!c.finish(4000));c.time(600000);assert.ok(c.finish(4000));c.decline();

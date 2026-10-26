@@ -18,19 +18,21 @@
   // A lane belongs to a profile/game. Difficulty changes restart score comparison.
   const laneFor=(profile,game)=>{
    const key=profile+':'+game;
-   return policy.play[key]||(policy.play[key]={games:0,lastAsk:0,changeAt:0,difficulty:-1,baseline:0,recent:0,baselineCount:0,recentCount:0,prompted:false});
+   const lane=policy.play[key]||(policy.play[key]={games:0,lastAsk:0,changeAt:0,difficulty:-1,baseline:0,recent:0,baselineCount:0,recentCount:0,prompted:false,recentMin:10000000,recentMax:0});
+   if(!Number.isFinite(lane.recentMin)||!Number.isFinite(lane.recentMax))Object.assign(lane,{recent:0,recentCount:0,recentMin:10000000,recentMax:0});
+   return lane;
   };
   const changed=lane=>!!lane.changeAt&&lane.games>=lane.changeAt&&lane.games-lane.changeAt<6;
   function observe(lane,difficulty,score){
    lane.games++;
-   if(lane.difficulty!==difficulty)Object.assign(lane,{difficulty,baseline:0,recent:0,baselineCount:0,recentCount:0,changeAt:0});
+   if(lane.difficulty!==difficulty)Object.assign(lane,{difficulty,baseline:0,recent:0,baselineCount:0,recentCount:0,changeAt:0,recentMin:10000000,recentMax:0});
    score=Math.min(10000000,Math.max(0,Math.round(score||0)));
    if(lane.baselineCount<3){lane.baseline+=score;lane.baselineCount++;return;}
-   lane.recent+=score;if(++lane.recentCount<3)return;
-   if(Math.abs(lane.baseline-lane.recent)>=1800&&(lane.recent>=lane.baseline*2||lane.baseline>=lane.recent*2)){
+   lane.recent+=score;lane.recentMin=Math.min(lane.recentMin,score);lane.recentMax=Math.max(lane.recentMax,score);if(++lane.recentCount<3)return;
+   if(Math.abs(lane.baseline-lane.recent)>=1800&&((lane.recent>=lane.baseline*2&&lane.recentMin*12>=lane.baseline*5)||(lane.baseline>=lane.recent*2&&lane.recentMax*4<=lane.baseline))){
     lane.changeAt=lane.games;lane.baseline=lane.recent;
    }else lane.baseline=Math.floor((lane.baseline*3+lane.recent)/4);
-   lane.recent=0;lane.recentCount=0;
+   lane.recent=0;lane.recentCount=0;lane.recentMin=10000000;lane.recentMax=0;
   }
   function markAsked(lane,key){
    Object.assign(lane,{prompted:true,lastAsk:lane.games,changeAt:0});askTimes[key]=host.now();

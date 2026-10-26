@@ -5,22 +5,22 @@ namespace remora {
 // Performance is a reminder hint, never a claim about the player's identity.
 struct RatingPlayStats {
  uint32_t games=0,lastAsk=0,changeAt=0;
- int difficulty=-1,baseline=0,recent=0;
+ int difficulty=-1,baseline=0,recent=0,recentMin=10000000,recentMax=0;
  uint8_t baselineCount=0,recentCount=0;
  bool prompted=false;
  int64_t lastAskAt=-1; // Uptime only; never persisted across reboots.
  void observe(int modeDifficulty,int score) {
   ++games;
-  if(modeDifficulty!=difficulty){difficulty=modeDifficulty;baseline=recent=0;baselineCount=recentCount=0;changeAt=0;}
+  if(modeDifficulty!=difficulty){difficulty=modeDifficulty;baseline=recent=0;baselineCount=recentCount=0;recentMin=10000000;recentMax=0;changeAt=0;}
   score=std::clamp(score,0,10000000);
   if(baselineCount<3){baseline+=score;++baselineCount;return;}
-  recent+=score;
+  recent+=score;recentMin=std::min(recentMin,score);recentMax=std::max(recentMax,score);
   if(++recentCount<3)return;
   int delta=baseline>recent?baseline-recent:recent-baseline;
-  if(delta>=1800&&(recent>=2*baseline||baseline>=2*recent)){
+  if(delta>=1800&&((recent>=2*baseline&&recentMin*12>=baseline*5)||(baseline>=2*recent&&recentMax*4<=baseline))){
    changeAt=games;baseline=recent;
   }else baseline=(baseline*3+recent)/4;
-  recent=0;recentCount=0;
+  recent=0;recentCount=0;recentMin=10000000;recentMax=0;
  }
  bool changed()const {return changeAt&&games>=changeAt&&games-changeAt<6;}
  bool ready(int64_t now)const {

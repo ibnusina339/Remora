@@ -24,13 +24,15 @@ static void loadRatingPlay(cJSON*j,UserProfile&u){
   p.games=get(0,0,0,2000000000);p.lastAsk=get(1,0,0,p.games);p.changeAt=get(2,0,0,p.games);
   p.difficulty=get(3,-1,-1,4);p.baseline=get(4,0,0,30000000);p.recent=get(5,0,0,30000000);
   p.baselineCount=get(6,0,0,3);p.recentCount=get(7,0,0,2);p.prompted=get(8,0,0,1);p.lastAskAt=-1;
+  p.recentMin=get(9,10000000,0,10000000);p.recentMax=get(10,0,0,10000000);
+  if(cJSON_GetArraySize(row)<11){p.recent=0;p.recentCount=0;}
  }
 }
 static void saveRatingPlay(cJSON*j,const UserProfile&u){
  cJSON_DeleteItemFromObject(j,"ratingPlay");auto all=cJSON_AddArrayToObject(j,"ratingPlay");
  for(const auto& p:u.ratingPlay){
   auto row=cJSON_CreateArray();
-  const int values[]={int(p.games),int(p.lastAsk),int(p.changeAt),p.difficulty,p.baseline,p.recent,p.baselineCount,p.recentCount,p.prompted};
+  const int values[]={int(p.games),int(p.lastAsk),int(p.changeAt),p.difficulty,p.baseline,p.recent,p.baselineCount,p.recentCount,p.prompted,p.recentMin,p.recentMax};
   for(int value:values){cJSON_AddItemToArray(row,cJSON_CreateNumber(value));}
   cJSON_AddItemToArray(all,row);
  }
