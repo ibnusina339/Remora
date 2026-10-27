@@ -71,7 +71,7 @@ Bukti lokal disimpan di `C:\Users\Admin\.codex\visualizations\2026\09\26\01a0ddf
 
 ## Pengujian komputer yang melengkapi
 
-Regresi OTA menjalankan sumber updater produksi dengan I/O ESP-IDF terkontrol: **43 skenario**, mencakup hash/ukuran salah, image rusak/terpotong, transfer gagal, cancel, offline, kegagalan flash dan pemilihan boot. Uji akses GitHub publik dari komputer memvalidasi manifest, descriptor, ukuran, dan SHA-256 tanpa token. Ini tidak menggantikan instalasi OTA fisik.
+Regresi OTA menjalankan sumber updater produksi dengan I/O ESP-IDF terkontrol: **71 skenario**, mencakup hash/ukuran salah, image rusak/terpotong, transfer gagal, cancel, offline, kegagalan flash dan pemilihan boot. Uji akses GitHub publik dari komputer memvalidasi manifest, descriptor, ukuran, dan SHA-256 tanpa token. Ini tidak menggantikan instalasi OTA fisik.
 
 Tambahan gameplay v0.4.0 diuji dengan solver 1.200 peta, pemeriksaan gerbang/scan, expiry bonus Snake, cooldown bonus Pong, render ukuran LCD, dan suite regresi. Hasil build/release dicatat di GitHub Actions.
 
@@ -85,6 +85,8 @@ Radio kemudian diuji tanpa aktivitas: dari keadaan aktif menjadi mati pada **30.
 
 Pada percobaan jaringan paling akhir, lima upaya koneksi tidak menemukan SSID sekolah (reason 201). Scan memakai runtime baru maupun image diagnostik lama yang sebelumnya berhasil sama-sama tidak melihat SSID tersebut. Karena itu RSSI −60 dBm di atas adalah pembacaan koneksi sebelumnya, bukan sinyal saat ini. Pemeriksaan ini tidak memastikan penyebab perubahan penerimaan radio. **Instalasi OTA fisik v0.4.1 sampai boot produksi belum dibuktikan**; jaringan sekolah perlu terlihat kembali dan periferal/baterai perlu dipasang untuk pemeriksaan kesehatan boot.
 
-Regresi komputer terbaru menjalankan **71 skenario OTA (0 gagal)** dan **11 skenario lifecycle Wi-Fi (0 gagal)** pada sumber produksi, termasuk pembatalan koneksi tertunda, callback scan setelah stop, dan perlindungan operasi aktif. [Build dan hasil tes](https://github.com/ibnusina339/Remora/actions/runs/40486216138). Suite audio terpisah juga disertakan pada CI untuk memeriksa mute, idle-low, clock tunggal, dan callback sesudah stop.
+Regresi komputer terbaru menjalankan **71 skenario OTA (0 gagal)** dan **11 skenario lifecycle Wi-Fi (0 gagal)** pada sumber produksi, termasuk pembatalan koneksi tertunda, callback scan setelah stop, dan perlindungan operasi aktif. [Build dan hasil tes](https://github.com/ibnusina339/Remora/actions/runs/40487837323). Suite audio terpisah lulus pada CI, mencakup mute, idle-low, clock tunggal, dan callback sesudah stop.
 
 Bukti lokal tambahan: `runtime-idle-audio.log`, `old-radio-scan.log`, dan `flash-runtime-bench.log`. Tidak ada log autentikasi atau backup privat yang dipublikasikan.
+
+Board terakhir dikembalikan ke diagnostik runtime terbaru (descriptor 0.2.0), dengan radio tidak dinyalakan. Status slot aktif VALID dan `NVSVERIFY` ESP_OK; lihat bukti lokal `runtime-final-state.log`. Firmware produksi v0.4.1 tersedia terpisah melalui GitHub Releases.
