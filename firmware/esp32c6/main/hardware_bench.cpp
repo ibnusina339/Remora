@@ -96,10 +96,12 @@ static esp_err_t portalEvent(esp_http_client_event_t* e){
  return ESP_OK;
 }
 static void portalPage(const std::string& path,const std::string& form=""){
- std::string url="http://icpaser.net"+path;
+ // Portal address verified with the local DNS resolver on the authorized school network.
+ std::string url="http://10.10.10.1"+path;
  esp_http_client_config_t c{};c.url=url.c_str();c.timeout_ms=10000;c.buffer_size=1024;c.event_handler=portalEvent;c.disable_auto_redirect=true;
  auto h=esp_http_client_init(&c);if(!h){printf("BENCH|PORTAL|ALLOC_FAILED\n");return;}
  esp_http_client_set_header(h,"User-Agent","Remora-ESP32C6");
+ esp_http_client_set_header(h,"Host","icpaser.net");
  if(!portalCookie.empty())esp_http_client_set_header(h,"Cookie",portalCookie.c_str());
  if(!form.empty()){esp_http_client_set_method(h,HTTP_METHOD_POST);esp_http_client_set_header(h,"Content-Type","application/x-www-form-urlencoded");}
  auto e=esp_http_client_open(h,form.size());
