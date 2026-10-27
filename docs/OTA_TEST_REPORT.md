@@ -1,8 +1,27 @@
 # Pengujian OTA REMORA
 
-Tanggal: 26 Oktober 2026. Kandidat firmware: v0.3.0.
+Diperbarui: **27 Oktober 2026**. Laporan mencakup regresi komputer awal v0.3.0 dan pengujian nyata ESP32-C6 terhadap firmware publik v0.4.0. Kandidat perbaikan v0.4.1 belum dinyatakan lulus end-to-end.
 
-## Hasil akses GitHub asli
+## Hasil terbaru pada ESP32-C6
+
+Board COM13 diuji tanpa LCD atau periferal. Login portal Wi-Fi **MAN Insan Cendekia Paser** menggunakan akun tamu yang diizinkan pengguna berhasil; pemeriksaan gstatic menerima **204**, HTTPS example.com **200**, dan API GitHub Releases **200**. Verifikasi sertifikat HTTPS tetap aktif.
+
+| Tahap | Hasil langsung pada perangkat |
+|---|---|
+| Periksa versi dari GitHub | **3/3** pemeriksaan berulang berhasil, dengan framebuffer dan draw buffer masih dialokasikan. Versi publik v0.4.0 ditawarkan sebagai `Ready to update to 0.4.0 version`. |
+| Unduh dan tulis binary | Selesai **100%**, **1.792.192 byte** ditulis ke slot aplikasi nonaktif dan dipilih untuk boot. |
+| Verifikasi isi slot | Readback slot OTA cocok dengan SHA-256 firmware publik v0.4.0: `a2a4c91ee90d89526dfd2280ed3c1aac170a05681bbbc652e283eb32b02d2cb0`. |
+| Boot aplikasi produksi | **Belum lulus.** v0.4.0 memicu watchdog pada task `esp_timer`. Analisis callback audio menemukan `ledc_set_duty` lama sekitar 160 µs, melebihi periode audio 125 µs. Perbaikan masih berlangsung. |
+| Rollback | Setelah reset normal, bootloader kembali ke diagnostik `ota_0` VALID (2); image `ota_1` ditandai ABORTED (4). |
+| Persistensi | Sentinel `userdata` tetap lulus `NVSVERIFY` sesudah percobaan OTA dan rollback. Ini belum membuktikan semua profil/rekor pada aplikasi produksi yang stabil. |
+
+**Kesimpulan sementara:** jaringan, pemeriksaan versi, transfer firmware, penulisan flash, kecocokan binary, dan rollback telah dibuktikan. Boot produksi yang stabil serta kelulusan akhir kandidat v0.4.1 masih menunggu perbaikan dan pengujian ulang. Board saat laporan diperbarui menjalankan **image diagnostik 0.2.0**, bukan isi flash awal.
+
+RSSI langsung terakhir **−60 dBm**, kanal **6**, bandwidth **20 MHz**. Bitrate PHY TX/RX terpisah belum diukur; API STA publik ESP-IDF 5.5.2 menyediakan RSSI/mode PHY/bandwidth, tanpa getter kecepatan TX/RX saat ini secara terpisah. Angka kapasitas maksimum atau throughput tidak dilaporkan sebagai penggantinya. Referensi: [API Wi-Fi resmi ESP-IDF 5.5.2](https://github.com/espressif/esp-idf/blob/v5.5.2/components/esp_wifi/include/esp_wifi.h).
+
+Bukti transfer, boot, rollback, persistensi, dan batas pemulihan board dirinci dalam [laporan perangkat 27 Oktober](HARDWARE_TEST_2026-10-27.md). Log autentikasi dan backup privat tidak dimasukkan ke repository publik; identitas akun portal pribadi tidak dipersistenkan ke firmware/repository.
+
+## Pengujian komputer awal — 26 Oktober 2026
 
 Pengunduhan di komputer ini dilakukan **tanpa token**, dengan validasi sertifikat HTTPS dan User-Agent perangkat. Endpoint latest saat pengujian menunjuk v0.2.0. Manifest dan binary mengikuti pengalihan HTTPS GitHub dengan sukses.
 
@@ -31,12 +50,12 @@ Perbaikan menolak 11 kondisi baseline yang sebelumnya lolos atau masih menampilk
 
 ## Batas pengujian
 
-Pada pengujian 26 Oktober 2026, tidak ada papan ESP32-C6 terdeteksi pada port komputer; semua port yang tersedia adalah serial Bluetooth. Karena itu penulisan flash nyata, gangguan daya, kualitas Wi-Fi, reboot ke image baru, rollback bootloader dan retensi profil nyata **belum diuji pada perangkat**. Simulator browser juga tidak melakukan flash OTA.
+Pada pengujian komputer **26 Oktober 2026**, belum ada papan ESP32-C6 terdeteksi; hasil bagian tersebut memakai I/O terkontrol. Pengujian perangkat **27 Oktober** di bagian atas kemudian membuktikan transfer/flash nyata, readback, rollback, dan retensi sentinel. Simulator browser tetap tidak melakukan flash OTA.
 
 Partisi aplikasi dan userdata tetap terpisah; peta partisi tidak diubah pada v0.3.0. Mock flash hanya menerima target slot aplikasi nonaktif. Pemeriksaan ini tidak menggantikan pengujian backup/restore dan persistensi pada hardware.
 
-Setelah perangkat tersedia: isi baterai minimal 30%, gunakan firmware versi lama dengan peta partisi yang sama, simpan profil/rekor contoh, sambungkan Wi-Fi lalu jalankan Settings > Network > OTA Update. Pastikan versi baru aktif setelah restart dan profil/rekor masih ada. Uji gangguan unduhan secara terpisah. Jangan gunakan erase-flash untuk pengujian retensi data.
+Pengujian yang masih diperlukan: boot stabil kandidat perbaikan sampai image dikonfirmasi valid, seluruh profil/rekor contoh tetap ada setelah update, serta gangguan unduhan/daya. Untuk retensi gunakan peta partisi yang sama dan jangan menjalankan erase-flash. LCD fisik, FPS/SPI, tombol, audio keluaran, baterai, charger, dan deep sleep rangkaian lengkap belum diuji karena periferal belum terpasang.
 
-## Pengujian perangkat 27 Oktober 2026
+## Catatan pemulihan board
 
-ESP32-C6 COM13 sudah diuji. Core dan renderer tanpa LCD lulus, tetapi Wi-Fi sekolah memakai captive portal sehingga HTTPS ke GitHub belum tersedia bagi ESP32. Tidak ada instalasi OTA fisik yang selesai. Flash awal dipulihkan dan dibaca ulang identik. Rincian dan batas pengujian ada di [laporan perangkat](HARDWARE_TEST_2026-10-27.md).
+Pemulihan pertama flash awal 4 MB memiliki readback yang identik. Pada pemulihan kedua, penulisan dan pemeriksaan hash alat flash berhasil, tetapi readback penuh macet; tidak ada klaim kesamaan byte demi byte untuk pemulihan kedua. Pengujian berikutnya kembali memasang diagnostik, dan rollback terakhir kembali ke diagnostik 0.2.0.

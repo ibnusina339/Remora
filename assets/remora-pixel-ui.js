@@ -606,7 +606,7 @@
         line(31,135,289,135,P.line);text('LATEST FIRMWARE',160,154,2,P.paper,'center');
         smallText('BROWSER TIDAK MEMASANG FIRMWARE',160,187,P.dim,'center');footer([null,null,null,'BACK']);
       }else if(['wifiNotSet','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].includes(v)){
-        const details={wifiNotSet:['WIFI','WIFI NOT SET','SETUP WIFI?', 'SETUP'],wifiConnecting:['WIFI','CONNECTING...','SIMULATION',null],wifiResult:['WIFI',s.networkError?'FAILED':'CONNECTED',s.networkError||s.wifiSSID,'RETRY'],wifiStatus:['WIFI STATUS',s.wifiPower==='off'?'WIFI OFF':'WIFI ON',s.wifiSSID||'NO NETWORK',null],forgetWifi:['FORGET WIFI','HAPUS JARINGAN?',s.wifiSSID||'NONE','CONFIRM'],networkDemo:[s.networkOperation,'NETWORK DEMO','NO SERVER CONNECTED',null]};
+        const details={wifiNotSet:['WIFI','WIFI NOT SET','SETUP WIFI?', 'SETUP'],wifiConnecting:['WIFI','CONNECTING...','SIMULATION',null],wifiResult:['WIFI',s.networkError?'FAILED':'CONNECTED',s.networkError||s.wifiSSID,'RETRY'],wifiStatus:['WIFI STATUS',s.wifiAutoStopped?'WIFI OTOMATIS MATI':s.wifiPower==='off'?'WIFI OFF':'WIFI ON',s.wifiAutoStopped?'HUBUNGKAN LAGI SAAT DIPERLUKAN':s.wifiSSID||'NO NETWORK',null],forgetWifi:['FORGET WIFI','HAPUS JARINGAN?',s.wifiSSID||'NONE','CONFIRM'],networkDemo:[s.networkOperation,'NETWORK DEMO','NO SERVER CONNECTED',null]};
         const [a,b,c,d]=details[v];
         const busy=v==='wifiConnecting'||(v==='wifiResult'&&!s.networkError);
         detail(a,b,c,'wifi',busy?[]:[null,null,v==='wifiResult'&&s.networkError?'EDIT':null,'BACK',null,d]);

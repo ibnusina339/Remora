@@ -277,6 +277,7 @@
   <script src="assets/remora-arcade.js"></script>
   <script src="assets/remora-power-policy.js"></script>
   <script src="assets/remora-idle-policy.js"></script>
+  <script src="assets/remora-network-idle.js"></script>
   <script src="assets/remora-display-settings.js"></script>
   <script src="assets/remora-profiles.js"></script>
   <script src="assets/remora-tutorial.js"></script>
@@ -363,7 +364,7 @@
         wrongKey: 0, expectedKey: 0, target: 0, reactionStart: 0, result: '', elapsed: 0,
         pressedKey: 0, speedDeadline: 0, game: {}, clears: 0, message: '', endMessage: '', phraseCounters: {}, nameChars: Array(7).fill(null), nameCursor: 0,
         namePurpose: 'first', nameReturnView:null, nameError: '', networkSelection: 0,
-        networkSource: 'network', wifiSSID: '', wifiConfigured: false, wifiPower: 'off', wifiScanBusy:false,wifiScanSelection:0,wifiNetworks:[],wifiPasswordRequired:false,
+        networkSource: 'network', wifiSSID: '', wifiConfigured: false, wifiPower: 'off', wifiAutoStopped:false,wifiConnectingAt:-1,wifiScanBusy:false,wifiScanSelection:0,wifiNetworks:[],wifiPasswordRequired:false,
         portalAPPassword: '',
         systemSelection: 0, diagnosticsOffset: 0, testKey: 0, ledTestColor: 0,
         manualSSID: '', manualPassword: '', textKind: 'password', textBuffer: '', textGroup: 0,
@@ -378,6 +379,7 @@
       let powerKeys=0, powerPrevious='off', suspendedView=null, menuRepeat=null;
       const powerPolicy=window.RemoraPowerPolicy.create();
       const idlePolicy=window.RemoraIdlePolicy.create();
+      const networkIdlePolicy=window.RemoraNetworkIdle.create();let networkGeneration=0;
       const displaySettings=window.RemoraDisplaySettings.create(localStorage);
       let generation = 0;
       let speedTick = null;
@@ -565,15 +567,28 @@
           if(suspendedView){const gap=performance.now()-(state.suspendedAt||performance.now());state.view=suspendedView;suspendedView=null;state.power='on';if(state.speedDeadline)state.speedDeadline+=gap;if(state.reactionStart)state.reactionStart+=gap;for(const c of state.game.cues||[]){if(c.firstTap)c.firstTap+=gap;if(c.holdStart)c.holdStart+=gap;}resumeTimers();startAnimation();render();}
           else bootUi();
         }else if(phase==='standby'){
-          state.power='standby';state.view='standby';stopAnimation();audio.silence();render();
+          stopWifiRadio(false);state.power='standby';state.view='standby';stopAnimation();audio.silence();render();
         }else if(phase==='cutoff'){
-          powerPolicy.off();stopTimers();stopAnimation();state.power='off';state.view='off';render();
+          stopWifiRadio(false);powerPolicy.off();stopTimers();stopAnimation();state.power='off';state.view='off';render();
         }else if(['lowNotice','chargeNotice','usbNotice','batteryPeek'].includes(phase)){
           if(before==='play'&&!suspendedView){suspendedView=state.view;state.suspendedAt=performance.now();arcade.pauseInputs();pauseTimers();save();}
           cancelExitHold();stopAnimation();state.power='on';state.view='powerNotice';state.noticeKind=phase;render();
         }
       }
-      function powerTick(){if(['off','shutdown'].includes(state.power))return;applyPowerPhase(powerPolicy.update(performance.now(),powerInput()));if(displaySettings.tick(performance.now()))render();checkShutdownShortcut();if(idlePolicy.due(performance.now(),state.autoOffMinutes,state.power==='on'&&!['powerNotice','firstLoginCountdown'].includes(state.view)&&!state.otaBusy)){powerOff(true);}}
+      function inNetworkUi(){return ['network','wifiScan','wifiNotSet','textEntry','phoneSetup','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].includes(state.view);}
+      function networkActivity(){networkIdlePolicy.touch(performance.now());}
+      function stopWifiRadio(automatic){
+        networkGeneration++;state.wifiPower='off';state.wifiScanBusy=false;state.wifiConnectingAt=-1;state.wifiAutoStopped=Boolean(automatic);
+        state.otaAvailable=false;state.otaVersion='';state.otaProgress=0;
+        if(automatic){state.networkError='Wi-Fi otomatis mati. Hubungkan lagi.';state.otaMessage=state.networkError;if(state.view==='phoneSetup')state.view='wifiStatus';}
+      }
+      function networkIdleTick(){
+        const now=performance.now();let connecting=state.wifiPower==='connecting';
+        if(connecting&&state.wifiConnectingAt<0)state.wifiConnectingAt=now;
+        if(connecting&&now-state.wifiConnectingAt>=20000){networkGeneration++;state.wifiPower='on';state.networkError='BELUM TERHUBUNG. COBA LAGI.';if(state.view==='wifiConnecting')state.view='wifiResult';connecting=false;}
+        if(networkIdlePolicy.due(now,state.wifiPower!=='off',inNetworkUi(),state.wifiPower==='ap',Boolean(state.otaBusy||state.wifiScanBusy||connecting))){stopWifiRadio(true);render();}
+      }
+      function powerTick(){if(['off','shutdown'].includes(state.power))return;applyPowerPhase(powerPolicy.update(performance.now(),powerInput()));if(displaySettings.tick(performance.now()))render();checkShutdownShortcut();networkIdleTick();if(idlePolicy.due(performance.now(),state.autoOffMinutes,state.power==='on'&&!['powerNotice','firstLoginCountdown'].includes(state.view)&&!state.otaBusy)){powerOff(true);}}
       setInterval(powerTick,20);
       batterySlider.addEventListener('input', () => setBatteryPercent(batterySlider.value));
       chargerCheckbox.addEventListener('change', () => setCharging(chargerCheckbox.checked));
@@ -612,7 +627,7 @@
         state.peekInfoSide=Math.random()<.5?'left':'right';
         state.peekInfoBottom=[59,64,69][Math.floor(Math.random()*3)];
         state.pressedKey = 0;
-        state.wifiPower = 'off';
+        stopWifiRadio(false);
         state.bootStartedAt = performance.now();
         render();
         say('REMORA sedang booting');
@@ -629,7 +644,7 @@
         state.power = 'shutdown';
         state.shutdownStartedAt=performance.now();
         state.pressedKey = 0;
-        state.wifiPower = 'off';
+        stopWifiRadio(false);
         state.connectionMethod = '';
         portalPassword.value = '';
         render();
@@ -730,8 +745,8 @@
         render();
       }
       function startWifiScan(source=state.networkSource){
-        stopTimers();state.view='wifiScan';state.wifiScanBusy=true;state.wifiNetworks=[];state.wifiScanSelection=0;state.networkSource=source;render();
-        later(()=>{state.wifiScanBusy=false;state.wifiNetworks=[{ssid:'REMORA Home',rssi:-43,secured:true},{ssid:'WiFi Terbuka',rssi:-61,secured:false},{ssid:'Hotspot Ponsel',rssi:-72,secured:true}];render();},800);
+        stopTimers();const ticket=++networkGeneration;networkActivity();state.wifiPower='on';state.wifiAutoStopped=false;state.view='wifiScan';state.wifiScanBusy=true;state.wifiNetworks=[];state.wifiScanSelection=0;state.networkSource=source;render();
+        later(()=>{if(ticket!==networkGeneration)return;state.wifiScanBusy=false;state.wifiNetworks=[{ssid:'REMORA Home',rssi:-43,secured:true},{ssid:'WiFi Terbuka',rssi:-61,secured:false},{ssid:'Hotspot Ponsel',rssi:-72,secured:true}];render();},800);
       }
       function wifiScanPress(key){
         if(key===4){stopTimers();state.wifiScanBusy=false;state.view='network';state.networkSelection=0;}
@@ -775,7 +790,7 @@
       }
       function startPhoneSetup() {
         state.connectionMethod = 'phone';
-        state.wifiPower = 'ap';
+        networkActivity();networkGeneration++;state.wifiAutoStopped=false;state.wifiPower = 'ap';
         state.portalAPPassword = newPlayerId();
         state.view = 'phoneSetup';
         portalForm.reset();
@@ -784,7 +799,7 @@
         render(); say('Simulasi portal ponsel aktif');
       }
       function connectWifi(ssid, password, method) {
-        stopTimers();
+        stopTimers();const ticket=++networkGeneration;networkActivity();state.wifiAutoStopped=false;state.wifiConnectingAt=performance.now();
         state.connectionMethod = method;
         state.manualSSID = ssid;
         state.manualPassword = password;
@@ -792,16 +807,18 @@
         state.view = 'wifiConnecting';
         render(); say('Simulasi menghubungkan Wi-Fi');
         later(() => {
+          if(ticket!==networkGeneration)return;state.wifiConnectingAt=-1;
           state.networkError = !ssid.trim() ? 'SSID REQUIRED' :
             password.length > 0 && password.length < 8 ? 'PASSWORD TOO SHORT' : '';
           state.view = 'wifiResult';
           if (!state.networkError) {
             state.wifiConfigured = true;
             state.wifiSSID = ssid;
-            state.wifiPower = 'off';
+            state.wifiPower = 'on';networkActivity();
             state.manualPassword = '';
             portalPassword.value = '';
             later(() => {
+              if(ticket!==networkGeneration)return;
               if (state.networkSource === 'network') state.view = method==='scan'?'wifiScan':'network';
               else { state.networkOperation = state.networkSource; state.view = 'networkDemo'; }
               render();
@@ -813,12 +830,13 @@
           render();
         }, 1200);
       }
+      portalForm.addEventListener('input',()=>{if(state.power==='on'&&state.view==='phoneSetup')networkActivity();});
       portalForm.addEventListener('submit', event => {
         event.preventDefault();
         if (state.power !== 'on' || state.view !== 'phoneSetup') return;
-        connectWifi(portalSSID.value, portalPassword.value, 'phone');
+        networkActivity();connectWifi(portalSSID.value, portalPassword.value, 'phone');
       });
-      portalShow.addEventListener('change', () => { portalPassword.type = portalShow.checked ? 'text' : 'password'; });
+      portalShow.addEventListener('change', () => { if(state.view==='phoneSetup')networkActivity();portalPassword.type = portalShow.checked ? 'text' : 'password'; });
       function chooseNetwork() {
         const item = networkItems[state.networkSelection];
         if (item === 'SCAN WIFI') startWifiScan('network');
@@ -850,7 +868,7 @@
       }
       function cancelExitHold(keepKeyboard=false) { if(exitHoldTimer!==null)clearTimeout(exitHoldTimer);exitHoldTimer=null;state.exitHolding=false;if(!keepKeyboard)keyboardRedHeld=false; }
       function buttonDown(key,onExit) {
-        if(key<1||key>6)return true;if(!(powerKeys&(1<<(key-1))))idlePolicy.touch(performance.now());
+        if(key<1||key>6)return true;if(!(powerKeys&(1<<(key-1)))){idlePolicy.touch(performance.now());if(inNetworkUi())networkActivity();}
         menuRepeated&=~(1<<(key-1));powerKeys|=1<<(key-1);powerTick();
         if(state.power!=='on'||state.view==='powerNotice')return true;
         if(shutdownContext&&state.view!=='shutdownConfirm')return true;
@@ -870,7 +888,7 @@
         }
         return arcade.keyDown(key);
       }
-      function buttonUp(key){if(key<1||key>6)return true;if(powerKeys&(1<<(key-1)))idlePolicy.touch(performance.now());const consumed=Boolean((shutdownConsumed|menuRepeated)&(1<<(key-1)))||(key===4&&nameCancelConsumed);if(key===4){clearNameCancelHold();nameCancelConsumed=false;}shutdownConsumed&=~(1<<(key-1));menuRepeated&=~(1<<(key-1));if(skipTutorialTimer){clearTimeout(skipTutorialTimer);skipTutorialTimer=null;}powerKeys&=~(1<<(key-1));powerTick();if(menuRepeat){clearTimeout(menuRepeat);menuRepeat=null;}if(key===4)cancelExitHold(true);const handled=arcade.keyUp(key);return consumed||handled;}
+      function buttonUp(key){if(key<1||key>6)return true;if(powerKeys&(1<<(key-1))){idlePolicy.touch(performance.now());if(inNetworkUi())networkActivity();}const consumed=Boolean((shutdownConsumed|menuRepeated)&(1<<(key-1)))||(key===4&&nameCancelConsumed);if(key===4){clearNameCancelHold();nameCancelConsumed=false;}shutdownConsumed&=~(1<<(key-1));menuRepeated&=~(1<<(key-1));if(skipTutorialTimer){clearTimeout(skipTutorialTimer);skipTutorialTimer=null;}powerKeys&=~(1<<(key-1));powerTick();if(menuRepeat){clearTimeout(menuRepeat);menuRepeat=null;}if(key===4)cancelExitHold(true);const handled=arcade.keyUp(key);return consumed||handled;}
       function goHome() { cancelExitHold();stopTimers(); state.view = 'home'; state.mode = null; state.pulse = 0; render(); say('Menu utama'); }
       function openPregame() {
         cancelExitHold();stopTimers();state.difficulty=state.difficultyByGame[gameCatalog[state.modeSelection].mode]??1; state.view = 'pregame'; state.mode = null; state.pulse = 0; render();
@@ -882,7 +900,7 @@
         if (previous == null || (lowerIsBetter ? value < previous : value > previous)) state.records[key] = value;
         save();
       }
-      function startMode(mode) { arcade.start(mode); }
+      function startMode(mode) { stopWifiRadio(false);arcade.start(mode); }
       function currentSettingsItems(){return state.activeProfile===5&&state.developerUnlocked?[...settingsItems,'RATING PROMPT']:settingsItems;}
       function chooseSetting() {
         if(state.selection===11&&state.activeProfile===5&&state.developerUnlocked){ratings.openPromptSettings();return;}
@@ -912,7 +930,7 @@
       }
       function press(key,activity=true) {
         if (state.power !== 'on' || ['chargeRequired','powerNotice'].includes(state.view) || key < 1 || key > 6) return;
-        if(activity)idlePolicy.touch(performance.now());
+        if(activity){idlePolicy.touch(performance.now());if(inNetworkUi())networkActivity();}
         audio.unlock();
         if(shutdownContext){if(state.view==='shutdownConfirm'){if(key===4){resumeShutdownContext();render();}else if(key===6){resumeShutdownContext(false);powerOff(true);}}return;}
         if(state.tutorialStep>=0){tutorialPress(key);return;}

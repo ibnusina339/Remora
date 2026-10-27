@@ -15,3 +15,5 @@ require('./auto-off-smoke.cjs');
 require('./game-variety-smoke.cjs');
 
 require('./ota-status-smoke.cjs');
+
+require('./network-idle-smoke.cjs');

@@ -242,6 +242,12 @@ static void installFirmware() {
  finished();
 }
 static void installTask(void*) {installFirmware();vTaskDelete(nullptr);}
+void otaInvalidateOffer(){
+ std::lock_guard<std::mutex> lock(mutex);if(status.busy)return;
+ status.available=false;status.version.clear();status.progress=0;
+ imageUrl.clear();expectedHash.clear();expectedSize=0;
+ status.message="Wi-Fi otomatis mati. Hubungkan lagi.";
+}
 void otaCheck() {
  std::lock_guard<std::mutex> lock(mutex);
  if(status.busy)return;

@@ -1,6 +1,8 @@
 # Pengujian REMORA pada ESP32-C6 — 27 Oktober 2026
 
-Board pengguna diuji melalui **COM13**, tanpa layar atau periferal lain. Wi-Fi yang digunakan sesuai instruksi: **MAN Insan Cendekia Paser**, tanpa password WPA. Hasil ini memisahkan pengujian langsung pada chip dari pengujian komputer.
+Board pengguna diuji melalui **COM13**, tanpa layar atau periferal lain. Wi-Fi yang digunakan sesuai instruksi: **MAN Insan Cendekia Paser**, tanpa password WPA tetapi menggunakan portal login. Laporan diperbarui setelah autentikasi portal, unduhan OTA fisik, dan pengujian rollback. Hasil ini memisahkan pengujian langsung pada chip dari pengujian komputer.
+
+**Status sementara:** akses internet dan penulisan binary OTA v0.4.0 berhasil. Aplikasi v0.4.0 kemudian mengalami watchdog saat boot; perangkat kembali ke image diagnostik melalui rollback. Kandidat perbaikan v0.4.1 belum dinyatakan lulus end-to-end.
 
 ## Hasil utama
 
@@ -10,12 +12,15 @@ Board pengguna diuji melalui **COM13**, tanpa layar atau periferal lain. Wi-Fi y
 | Core game pada chip | 11 game × 5 difficulty, power policy, rating core, dan SemVer lulus. Memakai core sebelum tambahan misi/bonus v0.4.0; perubahan game sesudah tes ini diuji terpisah di komputer/CI. |
 | Renderer pada chip | 75 layar/frame lulus menggunakan LVGL dan framebuffer 320×240. Tidak mengirim gambar melalui SPI ke LCD karena layar belum dipasang. |
 | Memori renderer | Framebuffer 153.600 byte + dua draw buffer total 20.480 byte dialokasikan. Free heap sekitar 88.440 byte sesudah alokasi dan sekitar 84 KB ketika Wi-Fi tersambung. Ini bukan pengukuran FPS LCD. |
-| Data NVS | Penulisan dan pembacaan sentinel di `userdata` berhasil setelah restart dan reflashing image diagnostik. Ini belum membuktikan retensi seluruh profil melalui OTA sukses. |
-| Wi-Fi | SSID ditemukan sebagai jaringan terbuka; akhirnya tersambung dengan IP 10.10.3.232. Asosiasi pertama sempat timeout, retry berhasil. |
-| OTA pada perangkat | **Belum berhasil end-to-end.** Jaringan memerlukan login portal sehingga HTTPS GitHub tidak tersedia. Tidak ada binary update yang diunduh atau diinstal lewat OTA. |
-| Pemulihan board | Seluruh flash 4 MB awal dipulihkan, lalu dibaca ulang dan dibandingkan byte demi byte: identik. Board ditinggalkan dengan isi awalnya. |
+| Data NVS | Sentinel di `userdata` berhasil dibaca setelah restart, reflashing diagnostik, instalasi OTA, dan rollback (`BENCH\|NVS\|VERIFY\|ESP_OK`). Ini belum membuktikan seluruh profil/rekor melalui aplikasi produksi yang stabil. |
+| Wi-Fi dan portal | Login tamu **Tamu** berhasil. Perangkat memperoleh akses internet: pemeriksaan gstatic **204**, HTTPS example.com **200**, dan API GitHub Releases **200**, dengan verifikasi sertifikat tetap aktif. |
+| Radio Wi-Fi | Pembacaan langsung terakhir: **RSSI −60 dBm**, kanal **6**, bandwidth **20 MHz**. Kecepatan PHY TX/RX terpisah belum terukur; bukan disamakan dengan throughput atau kapasitas maksimum radio. |
+| Pemeriksaan update | **3 dari 3** pemeriksaan berulang berhasil menawarkan v0.4.0 melalui jaringan asli, dengan framebuffer tetap dialokasikan. Pesan: `Ready to update to 0.4.0 version`. |
+| Unduhan dan flash OTA | Binary publik v0.4.0 **1.792.192 byte** selesai **100%**, dipilih untuk boot, dan hasil baca ulang slot aplikasi cocok SHA-256 dengan aset publik. |
+| Boot dan rollback | Boot aplikasi produksi v0.4.0 mengalami watchdog pada task `esp_timer`. Sesudah reset normal, bootloader menandai `ota_1` **ABORTED (4)** dan kembali ke diagnostik `ota_0` **VALID (2)**; sentinel NVS tetap terbaca. |
+| Isi board saat laporan diperbarui | Image diagnostik **0.2.0** di `ota_0`; **bukan** isi flash awal yang telah dipulihkan. |
 
-## Hambatan jaringan yang terkonfirmasi
+## Portal jaringan: hambatan awal sudah terselesaikan
 
 Tes HTTP konektivitas menerima **302** menuju:
 
@@ -23,30 +28,46 @@ Tes HTTP konektivitas menerima **302** menuju:
 http://icpaser.net/login?dst=http%3A%2F%2Fconnectivitycheck.gstatic.com%2Fgenerate%5F204
 ```
 
-Wi-Fi tanpa password tetap dapat memerlukan login portal. ESP32 mendapat IP tetapi belum memiliki akses internet penuh. HTTPS ke `example.com` dan endpoint latest GitHub sama-sama gagal; TLS berakhir dengan `MBEDTLS_ERR_SSL_CONN_EOF (-0x7280)`.
+Pada percobaan awal, ESP32 mendapat IP tetapi belum memiliki akses internet penuh. HTTPS ke `example.com` dan endpoint latest GitHub sama-sama gagal; TLS berakhir dengan `MBEDTLS_ERR_SSL_CONN_EOF (-0x7280)`. SNTP juga belum menjawab. Hasil awal ini menjelaskan kegagalan sebelum login, bukan status koneksi terakhir.
 
-SNTP `pool.ntp.org` juga tidak menjawab dalam jendela 15 detik. Untuk diagnosis saja, waktu UTC dari komputer diberikan lewat serial; handshake HTTPS tetap gagal. Percobaan Wi-Fi b/g/n dan menonaktifkan power save tidak mengubah hasil. Verifikasi sertifikat HTTPS tetap aktif. Portal tidak dilewati atau diloginkan secara otomatis.
+Setelah login portal menggunakan akun tamu yang diizinkan pengguna, pemeriksaan gstatic menerima 204 dan kedua tujuan HTTPS menerima 200. Pemeriksaan metadata dan pengunduhan aset GitHub kemudian berhasil. Identitas akun portal pribadi tidak dipersistenkan ke firmware/repository; log autentikasi dan backup privat tetap di luar repository publik.
 
-Pengujian OTA fisik berikutnya memerlukan jaringan yang menyediakan akses internet ke ESP32 tanpa portal, atau sesi portal yang telah diotorisasi untuk perangkat tersebut. Download, perpindahan slot boot, rollback, retensi profil lewat OTA sukses, dan ketahanan terhadap putus daya **belum dapat dinyatakan lulus** dari tes ini.
+RSSI diambil melalui API STA, bukan estimasi dari komputer. API publik ESP-IDF 5.5.2 menyediakan `esp_wifi_sta_get_rssi`, `esp_wifi_sta_get_ap_info`, `esp_wifi_sta_get_negotiated_phymode`, dan `esp_wifi_get_bandwidth`, tetapi tidak menyediakan getter bitrate PHY TX/RX STA saat ini secara terpisah. Karena itu laporan tidak mengubah field driver `max_rate` menjadi dua angka Mbps. Lihat [header API resmi ESP-IDF 5.5.2](https://github.com/espressif/esp-idf/blob/v5.5.2/components/esp_wifi/include/esp_wifi.h).
+
+## OTA fisik dan masalah boot yang ditemukan
+
+Updater dari sumber kandidat perbaikan diperiksa tiga kali berturut-turut saat framebuffer 153.600 byte dan draw buffer 20.480 byte masih dialokasikan; semuanya selesai dengan penawaran v0.4.0. Transfer berikutnya mencapai 100%, menulis slot nonaktif, dan meminta restart.
+
+Hasil baca ulang `ota-slot1-v040-readback.bin` berukuran **1.792.192 byte** memiliki SHA-256 yang sama dengan firmware publik v0.4.0:
+
+```text
+a2a4c91ee90d89526dfd2280ed3c1aac170a05681bbbc652e283eb32b02d2cb0
+```
+
+Keberhasilan transfer ini **belum berarti aplikasi produksi stabil**. Boot v0.4.0 memicu task watchdog dengan CPU berada pada `esp_timer`. Analisis audio menemukan `ledc_set_duty` lama memerlukan sekitar **160 µs**, melebihi periode callback audio **125 µs**. Perbaikannya masih dikerjakan saat laporan ini diperbarui.
+
+Setelah reset normal, diagnostik melaporkan `ota_0` VALID (2), `ota_1` ABORTED (4), dan verifikasi sentinel `userdata` ESP_OK. Ini merupakan bukti rollback bootloader dan retensi sentinel melalui percobaan OTA yang gagal boot. Pengujian seluruh profil/rekor, boot stabil kandidat perbaikan, dan gangguan daya tetap belum selesai.
 
 ## Perbaikan dari pengujian nyata
 
 1. Konfigurasi konsol lama `CONFIG_ESP_CONSOLE_UART_NONE` menimpa pilihan USB. Dihapus agar USB Serial/JTAG dapat menampilkan status.
 2. Task event Wi-Fi/IP mengalami stack protection fault dengan ukuran default 2.816 byte. Ditingkatkan menjadi **6.144 byte**; koneksi kemudian berhasil mendapat IP tanpa crash tersebut.
 
-Keduanya dimasukkan ke firmware v0.4.0. Error awal pada harness renderer karena alokasi temporer berulang diperbaiki pada harness pengujian saja, bukan diklaim sebagai bug produk.
+Keduanya dimasukkan ke firmware v0.4.0. Error awal pada harness renderer karena alokasi temporer berulang diperbaiki pada harness pengujian saja, bukan diklaim sebagai bug produk. Pengujian lanjutan juga menemukan kebutuhan membatasi memori metadata/redirect OTA dan biaya callback audio; kelulusan akhir kandidat v0.4.1 belum diklaim di sini.
 
 ## Backup dan pemulihan
 
-Ukuran backup dan readback: **4.194.304 byte**. SHA-256 keduanya:
+Pemulihan **pertama** menulis seluruh flash awal, membaca ulang **4.194.304 byte**, dan membandingkan isinya byte demi byte: identik. SHA-256 backup dan readback pertama:
 
 ```text
 8db70e2cdf2dee4458d0882492ee87ac798dd350ebd3f419eda19b9a91208445
 ```
 
+Pada pemulihan **kedua**, proses penulisan dan pemeriksaan hash oleh alat flash berhasil, tetapi pembacaan ulang penuh macet. Karena itu pemulihan kedua tidak diklaim identik berdasarkan readback. Pengujian selanjutnya kembali memasang diagnostik; board saat ini menjalankan diagnostik 0.2.0 setelah rollback, bukan flash awal.
+
 Peta partisi awal board berbeda dari peta REMORA. Backup penuh dibuat sebelum pemasangan image diagnostik. Backup berpotensi memuat data privat perangkat, sehingga **tidak dimasukkan ke repositori publik**.
 
-Bukti lokal disimpan di `C:\Users\Admin\.codex\visualizations\2026\09\26\01a0ddf0-8c53-77c1-a61b-1bc60c6d267b\hardware-test-2026-10-27`, termasuk `connectivity-final.log`, `bench-serial-final.log`, `backup-report.json`, `restore-report.json`, backup dan readback.
+Bukti lokal disimpan di `C:\Users\Admin\.codex\visualizations\2026\09\26\01a0ddf0-8c53-77c1-a61b-1bc60c6d267b\hardware-test-2026-10-27`, termasuk `guest-session.log`, `ota-slot1-readback.log`, `ota-slot1-v040-readback.bin`, `post-ota-boot.log`, `rollback-after-ota.log`, serta laporan backup/restore awal. File log portal dan backup privat tidak dipublikasikan.
 
 ## Pengujian komputer yang melengkapi
 

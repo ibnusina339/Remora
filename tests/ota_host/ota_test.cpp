@@ -162,6 +162,8 @@ int main(int argc,char** argv) {
  test("offline check clears stale available offer",[]{check();wifi=false;check(false);install(false);require(begin==0,"offline check left installable offer");});
  test("NTP failure refuses insecure clock workaround",[]{fixture::clock=0;ntpOk=false;check(false);require(reads==0,"HTTPS attempted before clock sync");});
  test("NTP recovery allows update",[]{fixture::clock=0;check();install(true);});
+ test("radio auto-off invalidates stale offer",[]{check();remora::otaInvalidateOffer();require(!remora::otaStatus().available&&remora::otaStatus().version.empty(),"auto-off retained stale offer");install(false);require(begin==0,"radio auto-off allowed flash");});
+ test("radio auto-off cannot interrupt busy check",[]{remora::otaCheck();remora::otaInvalidateOffer();require(remora::otaStatus().busy,"auto-off interrupted active check");run();require(remora::otaStatus().available,"active check lost offer");});
  test("task allocation failure clears busy",[]{taskOk=false;check(false);});
  test("TLS/open failure releases client",[]{routes[remora::Latest].connect=false;check(false);});
  test("client allocation failure handled",[]{initOk=false;check(false);});

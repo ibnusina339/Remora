@@ -16,6 +16,7 @@ static bool suspended=false,dirty=false,newName=false;static uint8_t stable=0,ra
 static int pendingProfileSlot=-1;
 static bool shutdownFrozen=false;static int64_t shutdownAt=-1;static View shutdownReturn=View::Home;
 static int64_t now(){return esp_timer_get_time()/1000;}
+static bool inNetworkUi(){return ui.view==View::Network||ui.view==View::WifiScan||ui.view==View::Portal||ui.view==View::Ota||(ui.view==View::Text&&ui.entryTitle=="WIFI PASSWORD")||(ui.view==View::WifiStatus&&(ui.entryTitle=="WIFI"||ui.entryTitle=="OTA"));}
 static void persist(){save(prefs);dirty=false;saveAt=now();}
 static void checkpoint(){if(ui.view==View::Playing){prefs.resumeMode=game.s.mode;prefs.resumeDifficulty=game.s.difficulty;prefs.resumeLevel=game.s.level;prefs.resumeScore=game.s.score;prefs.resumeClears=game.s.clears;}persist();}
 static void tutorialStep(int step){ui.tutorial=step;ui.tutorialAt=now();ui.tutorialReveal=false;ui.tutorialDialog=true;if(step<=1||step==6)ui.view=View::Home;else if(step==2){ui.view=View::Guide;ui.guidePage=0;}else if(step==3||step==4)ui.view=View::Pregame;else ui.view=View::Settings;ui.game=0;ui.selection=0;}
@@ -28,8 +29,8 @@ static void startGame(){gameOverSeen=false;ui.rateInviteAt=0;networkStop();std::
 static void boot(){audioEffect("boot");lockDeveloper(prefs);ui.developerUnlocked=false;ui.view=View::Boot;ui.animationStart=now();int old=ui.peekGame;ui.peekGame=(old+1+esp_random()%(GameCount-1))%GameCount;ui.peekSide=esp_random()%2;}
 static void clockReset(){prefs.spiMHz=10;prefs.spiPending=false;persist();displayStart(10);uiInvalidate();}
 static void setPhase(PowerPhase phase){auto old=ui.power;if(old==phase)return;ui.power=phase;exitAt=ui.exitStarted=-1;repeatKey=0;if(phase==PowerPhase::Play){consumed|=stable;peripherals(true);if(displayStart(prefs.spiMHz)!=ESP_OK){prefs.spiMHz=10;prefs.spiPending=false;persist();ESP_ERROR_CHECK(displayStart(10));}uiInvalidate();if(suspended){ui.view=resumeView;suspended=false;game.s.held.fill(false);}else boot();}
- else if(phase==PowerPhase::Standby){otaCancel();checkpoint();peripherals(false);}
- else if(phase==PowerPhase::Cutoff){checkpoint();otaCancel();fullCutoff();}
+ else if(phase==PowerPhase::Standby){otaCancel();networkStop();checkpoint();peripherals(false);}
+ else if(phase==PowerPhase::Cutoff){checkpoint();otaCancel();networkStop();fullCutoff();}
  else{if(old==PowerPhase::Play){resumeView=ui.view;suspended=true;for(auto &c:game.s.cues)c.holding=false;game.s.held.fill(false);checkpoint();}otaCancel();peripherals(true);if(displayStart(10)!=ESP_OK){peripherals(false);return;}uiInvalidate();ui.view=View::Notice;}}
 static void shutdownGesture(int64_t t){
  if(ui.view==View::ConfirmShutdown)return;
@@ -117,14 +118,18 @@ static void press(int key){if(ui.power!=PowerPhase::Play)return;
  case View::System:if(key==2||key==5)ui.selection=(ui.selection+(key==2?4:1))%5;else if(key==4)ui.view=View::Settings;else if(key==6){View views[]={View::Diagnostics,View::ButtonTest,View::LedTest,View::SpeakerTest,View::DisplayTest};ui.view=views[ui.selection];ui.entryTitle="DIAGNOSTICS";ui.status=std::string("FW ")+esp_app_get_description()->version+" / HEAP "+std::to_string(esp_get_free_heap_size())+" / ADC "+std::to_string(ui.battery.mv)+" MV";}break;
  case View::ButtonTest:case View::SpeakerTest:case View::LedTest:if(key==4)ui.view=View::System;else{ui.testKey=key;if(ui.view==View::SpeakerTest)audioEffect("tone");}break;
  case View::Secret:if(key==4)home();else if(key==6)audioMeow();break;
- default:if(ui.entryTitle=="WIFI"&&ui.wifiFromScan&&(key==4||key==6)){ui.view=View::WifiScan;ui.selection=0;}else if(ui.entryTitle=="THEME"&&(key==1||key==3)){int theme=(prefs.mono?2:prefs.ocean?1:0)+(key==1?2:1);theme%=3;prefs.ocean=theme==1;prefs.mono=theme==2;ui.status=prefs.mono?"WHITE / BLACK":prefs.ocean?"OCEAN":"AMBER";dirty=true;}else if(ui.entryTitle=="KEY LIGHT"&&(key==1||key==3)){prefs.leds=std::clamp(prefs.leds+(key==1?-10:10),0,100);ui.status=std::to_string(prefs.leds)+"%";dirty=true;}else if(key==4||key==6)ui.view=View::Settings;break;
+ default:if(ui.entryTitle=="WIFI"&&(key==4||key==6)){ui.view=ui.wifiFromScan?View::WifiScan:View::Network;ui.selection=0;}else if(ui.entryTitle=="THEME"&&(key==1||key==3)){int theme=(prefs.mono?2:prefs.ocean?1:0)+(key==1?2:1);theme%=3;prefs.ocean=theme==1;prefs.mono=theme==2;ui.status=prefs.mono?"WHITE / BLACK":prefs.ocean?"OCEAN":"AMBER";dirty=true;}else if(ui.entryTitle=="KEY LIGHT"&&(key==1||key==3)){prefs.leds=std::clamp(prefs.leds+(key==1?-10:10),0,100);ui.status=std::to_string(prefs.leds)+"%";dirty=true;}else if(key==4||key==6)ui.view=View::Settings;break;
  }
 }
 static void finishEntry(){if(ui.view==View::Name){if(ui.entry.empty()||ui.entry=="XDAXA")return;if(pendingProfileSlot>=0){if(!addProfile(prefs,pendingProfileSlot))return;pendingProfileSlot=-1;}ui.canCancelName=false;strncpy(prefs.player,ui.entry.c_str(),7);prefs.player[7]=0;prefs.used=true;persist();if(prefs.firstLoginPending||newName||!prefs.tutorialDone)tutorialStep(0);else ui.view=View::Profiles;}else if(ui.view==View::Text){if((ui.passwordRequired&&ui.entry.empty())||(!ui.entry.empty()&&ui.entry.size()<8)){ui.status="PASSWORD MINIMAL 8 KARAKTER";return;}networkConnect(pendingSsid,ui.entry);std::fill(ui.entry.begin(),ui.entry.end(),0);ui.entry.clear();ui.view=View::WifiStatus;ui.entryTitle="WIFI";ui.status="MENGHUBUNGKAN...";}}
 static void down(int key){if(ui.power!=PowerPhase::Play||ui.tutorial>=0||shutdownFrozen)return;if(ui.view==View::Playing&&!game.finished()){if(key==4){exitAt=ui.exitStarted=now();}if(game.keyDown(key))consumed|=1<<(key-1);}else if(ui.view==View::Home&&(key==1||key==3)){repeatKey=key;repeatAt=now()+500;}}
-static void tick(){int64_t t=now();ui.now=t;uint8_t raw=readKeys();if(raw!=rawPrevious){rawPrevious=raw;rawAt=t;}if(t-rawAt>=20&&raw!=stable){auto before=stable;stable=raw;idle.touch(t);shutdownGesture(t);for(int i=0;i<6;i++)if((stable&(1<<i))&&!(before&(1<<i)))down(i+1);for(int i=0;i<6;i++)if(!(stable&(1<<i))&&(before&(1<<i))){game.keyUp(i+1);if(i==3)exitAt=ui.exitStarted=-1;if(repeatKey==i+1)repeatKey=0;if(!(consumed&(1<<i)))press(i+1);consumed&=~(1<<i);}}
+static void tick(){int64_t t=now();ui.now=t;uint8_t raw=readKeys();if(raw!=rawPrevious){rawPrevious=raw;rawAt=t;}if(t-rawAt>=20&&raw!=stable){auto before=stable;stable=raw;idle.touch(t);if(inNetworkUi())networkActivity();shutdownGesture(t);for(int i=0;i<6;i++)if((stable&(1<<i))&&!(before&(1<<i)))down(i+1);for(int i=0;i<6;i++)if(!(stable&(1<<i))&&(before&(1<<i))){game.keyUp(i+1);if(i==3)exitAt=ui.exitStarted=-1;if(repeatKey==i+1)repeatKey=0;if(!(consumed&(1<<i)))press(i+1);consumed&=~(1<<i);}}
  if(t-batteryAt>=1000){auto battery=sampleBattery();if(battery.valid)ui.battery=battery;batteryAt=t;}ui.usb=usbPresent();PowerInput input{ui.usb,ui.battery.valid?ui.battery.percent:0,stable,ui.battery.critical};auto nextPower=power.update(t,input);if(nextPower!=PowerPhase::Play&&shutdownFrozen){ui.view=shutdownReturn;if(ui.tutorial>=0)ui.tutorialAt+=t-shutdownAt;shutdownFrozen=false;shutdownAt=-1;}setPhase(nextPower);shutdownGesture(t);
  if(ui.power==PowerPhase::Cutoff){vTaskDelay(pdMS_TO_TICKS(100));return;}if(ui.power==PowerPhase::Standby){standbySleep();return;}
+ if(networkIdleTick(t,inNetworkUi(),otaStatus().busy)){
+  otaInvalidateOffer();
+  if(ui.view==View::Portal){ui.view=View::WifiStatus;ui.entryTitle="WIFI";ui.wifiFromScan=false;ui.status=networkConnectionMessage();}
+ }
  if(idle.due(t,prefs.autoOffMinutes,ui.power==PowerPhase::Play&&ui.view!=View::Boot&&ui.view!=View::Shutdown&&ui.view!=View::FirstCountdown&&!otaStatus().busy)){
   ui.view=View::Shutdown;ui.animationStart=t;ui.tutorial=-1;ui.rateInviteAt=0;suspended=false;shutdownFrozen=false;shutdownAt=-1;
   repeatKey=0;exitAt=ui.exitStarted=-1;consumed|=stable;otaCancel();networkStop();audioEffect("off");persist();

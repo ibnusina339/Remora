@@ -30,11 +30,12 @@ void peripherals(bool on);bool peripheralsOn();void fullCutoff();void standbySle
 void setLeds(const std::array<uint32_t,6>&,int brightness);
 void displayInitLvgl();esp_err_t displayStart(int mhz);void displayStop();bool displayWait();
 float displayFps();uint32_t displayErrors();int displayClock();
-void audioStart();void audioStop();void audioVolumes(int,int,int);void audioMenu(bool);void audioEffect(const char*);void audioMeow();void vibrate(int milliseconds);
+void audioStart();bool audioSamplingActive();void audioStop();void audioVolumes(int,int,int);void audioMenu(bool);void audioEffect(const char*);void audioMeow();void vibrate(int milliseconds);
 struct WifiNetwork {std::string ssid;int rssi=0;bool secured=false;};
 void networkScan();bool networkScanning();std::vector<WifiNetwork>networkScanResults();std::string networkScanMessage();std::string networkConnectionMessage();
 void networkInit();void networkConnect(const std::string&,const std::string&);void networkConnectSaved();void networkPortal();void networkStop();bool networkConnected();bool networkPortalActive();std::string networkName();std::string portalPassword();
 struct OtaStatus {bool busy=false,available=false;int progress=0;std::string version,message;};
-void otaCheck();void otaInstall();OtaStatus otaStatus();void otaCancel();
+void otaCheck();void otaInstall();OtaStatus otaStatus();void otaCancel();void otaInvalidateOffer();
+void networkActivity();bool networkRadioActive();bool networkConnecting();void networkAutoStop();bool networkIdleTick(int64_t now,bool networkScreen,bool otaBusy);
 extern lv_display_t* display;
 }

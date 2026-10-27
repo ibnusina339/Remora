@@ -37,7 +37,7 @@ function launch(store={value:JSON.stringify({playerName:'PLAYER',playerId:'RM202
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-meow-sample.js'),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-audio.js'),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-arcade.js'),'utf8'),sandbox);
-  for(const file of ['remora-power-policy.js','remora-idle-policy.js','remora-display-settings.js','remora-profiles.js','remora-tutorial.js','remora-ratings.js'])vm.runInContext(fs.readFileSync(path.join(root,'assets',file),'utf8'),sandbox);
+  for(const file of ['remora-power-policy.js','remora-idle-policy.js','remora-network-idle.js','remora-display-settings.js','remora-profiles.js','remora-tutorial.js','remora-ratings.js'])vm.runInContext(fs.readFileSync(path.join(root,'assets',file),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-pixel-ui.js'),'utf8'),sandbox);
   let script=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n').split('<script>')[1].split('</script>')[0];
   script=script.replace('      render();\n    })();','      window.__test = {state, render, arcade};\n      render();\n    })();');
