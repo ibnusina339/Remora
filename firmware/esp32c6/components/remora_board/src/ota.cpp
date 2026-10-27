@@ -119,6 +119,9 @@ static void checkTask(void*) {
     if(name=="manifest.json"&&url==base+name)manifestUrl=url;
     if(name=="remora-esp32c6.bin"&&url==base+name)imageUrl=url;
    }
+   // Release the large GitHub document before starting another TLS session.
+   // With the framebuffer allocated, retaining both JSON copies can exhaust C6 heap.
+   cJSON_Delete(json);json=nullptr;std::string{}.swap(body);
    auto text=get(manifestUrl,4096);auto manifest=cJSON_Parse(text.c_str());
    if(manifest){ok=validManifest(manifest,next);cJSON_Delete(manifest);}
    if(ok&&!cancelled) {
