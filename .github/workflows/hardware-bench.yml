@@ -28,10 +28,12 @@ jobs:
           cd firmware/esp32c6
           idf.py set-target esp32c6
           idf.py build
+          grep -q '^CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y$' sdkconfig
+          if grep -q '^CONFIG_ESP_CONSOLE_NONE=y$' sdkconfig; then exit 1; fi
           cd build
           python -m esptool --chip esp32c6 merge_bin -o remora-bench-full.bin @flash_args
           mkdir -p ../../../dist/bench
-          cp Remora.bin remora-bench-full.bin bootloader/bootloader.bin partition_table/partition-table.bin ota_data_initial.bin ../../../dist/bench/
+          cp ../sdkconfig Remora.bin remora-bench-full.bin bootloader/bootloader.bin partition_table/partition-table.bin ota_data_initial.bin ../../../dist/bench/
       - uses: actions/upload-artifact@v4
         with:
           name: remora-headless-bench

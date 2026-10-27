@@ -51,7 +51,7 @@ extern "C" void app_main(){
  if(n!=ESP_OK||u!=ESP_OK){printf("BENCH|FATAL|NVS_INIT\n");return;}
  // Only this isolated diagnostic image is confirmed without display/ADC checks.
  auto valid=esp_ota_mark_app_valid_cancel_rollback();printf("BENCH|DIAGNOSTIC_IMAGE|confirm=%s\n",esp_err_to_name(valid));
- status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT CHECK INSTALL CANCEL CORE NVSSET NVSVERIFY REBOOT\n");
+ status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT CHECK INSTALL CANCEL CORE NVSSET NVSVERIFY ARM REBOOT\n");
  std::string line;
  while(true){
   int c=getchar();
@@ -72,6 +72,7 @@ extern "C" void app_main(){
   else if(command=="CORE"){printf("BENCH|CORE|START|games=11|presets=5\n");runCoreTests();printf("BENCH|CORE|PASS\n");}
   else if(command=="NVSSET")sentinel(true);
   else if(command=="NVSVERIFY")sentinel(false);
+  else if(command=="ARM"){auto e=esp_ota_set_boot_partition(esp_ota_get_running_partition());printf("BENCH|ARM|%s\n",esp_err_to_name(e));if(e==ESP_OK){vTaskDelay(pdMS_TO_TICKS(150));esp_restart();}}
   else if(command=="REBOOT"){printf("BENCH|REBOOT\n");vTaskDelay(pdMS_TO_TICKS(150));esp_restart();}
   else if(!command.empty())printf("BENCH|UNKNOWN|%s\n",command.c_str());
  }
