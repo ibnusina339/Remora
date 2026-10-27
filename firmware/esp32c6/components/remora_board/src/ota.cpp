@@ -100,11 +100,11 @@ static bool validManifest(const cJSON* manifest,const SemVer& release) {
   str(manifest,"board")=="esp32c6-supermini-k2"&&str(manifest,"asset")=="remora-esp32c6.bin"&&
   version.valid&&version.compare(release)==0;
 }
-static void checkTask(void*) {
+static void checkRelease() {
  imageUrl.clear();expectedHash.clear();expectedSize=0;
  if(!synchronizeClock()) {
   set("Waktu belum sinkron. Periksa internet/NTP lalu coba lagi.");
-  finished();vTaskDelete(nullptr);return;
+  finished();return;
  }
  set("Memeriksa GitHub Releases...");
  auto body=get(Api,24576);auto json=cJSON_Parse(body.c_str());bool ok=false;
@@ -137,9 +137,10 @@ static void checkTask(void*) {
   else if(!ok&&status.message=="Memeriksa GitHub Releases...")status.message="Release/manifest belum tersedia atau tidak cocok.";
   status.busy=false;
  }
- vTaskDelete(nullptr);
 }
-static void installTask(void*) {
+// FreeRTOS task deletion does not unwind C++ locals. Return through the helper first.
+static void checkTask(void*) {checkRelease();vTaskDelete(nullptr);}
+static void installFirmware() {
  set("Mengunduh firmware...",0);
  auto part=esp_ota_get_next_update_partition(nullptr);esp_ota_handle_t ota=0;
  bool begun=false,ok=part&&expectedSize>=int(ImageDescriptorEnd)&&expectedSize<=int(part->size);
@@ -185,8 +186,9 @@ static void installTask(void*) {
  if(ok)ok=!cancelled&&esp_ota_set_boot_partition(part)==ESP_OK;
  if(ok){set("Update selesai. Restart...",100);vTaskDelay(pdMS_TO_TICKS(1000));esp_restart();}
  else set(cancelled?"Update dibatalkan; firmware lama tetap aktif.":"Update gagal/diverifikasi gagal.");
- finished();vTaskDelete(nullptr);
+ finished();
 }
+static void installTask(void*) {installFirmware();vTaskDelete(nullptr);}
 void otaCheck() {
  std::lock_guard<std::mutex> lock(mutex);
  if(status.busy)return;
