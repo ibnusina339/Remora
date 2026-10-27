@@ -13,6 +13,8 @@ using namespace fixture;
 static std::string releaseBody,manifestBody,imageBody,tag,manifestUrl,binaryUrl;
 static int passed=0,failed=0;
 static int jsonAllocations=0;
+static bool metadataAllocated=false;
+static void* trackedMetadataMalloc(size_t n){metadataAllocated=true;return std::malloc(n);}
 static void* trackedJsonMalloc(size_t size){void*p=malloc(size);if(p)++jsonAllocations;return p;}
 static void trackedJsonFree(void*p){if(p)--jsonAllocations;free(p);}
 static std::string read(const std::string& path) {
@@ -81,6 +83,18 @@ int main(int argc,char** argv) {
   routes[manifestUrl].failAfter=(manifestBody.size()+1023)/1024;
   check();routes[binaryUrl].failAfter=(imageBody.size()+2047)/2048;install(true);
  });
+ test("metadata allocation failure never opens HTTPS",[]{
+  auto data=remora::get(remora::Api,24576,+[](size_t)->void*{return nullptr;});
+  require(!data&&clients==0&&reads==0,"failed metadata allocation opened network");
+ });
+ test("bounded metadata allocated before TLS and NUL terminated",[]{
+  metadataAllocated=false;beforeHttpOpen=[](const std::string&){require(metadataAllocated,"TLS opened before bounded metadata allocation");};
+  auto data=remora::get(remora::Api,24576,trackedMetadataMalloc);beforeHttpOpen={};
+  require(bool(data)&&data.size==releaseBody.size()&&std::string(data.c_str())==releaseBody,"metadata differs or lacks NUL");
+ });
+ test("ready status shows exact stable version",[]{check();auto version=tag[0]=='v'?tag.substr(1):tag;require(remora::otaStatus().message=="Ready to update to "+version+" version","ready message mismatch");});
+ test("latest status requires installed stable version",[]{strncpy(current.version,tag.c_str(),31);check(false);require(remora::otaStatus().message=="Latest firmware","latest message mismatch");});
+ test("prerelease tag never claims latest",[]{routes[remora::Api].body=edit(releaseBody,"tag_name","v99.0.0-rc.1");check(false);require(remora::otaStatus().message!="Latest firmware","prerelease incorrectly called latest");});
  test("17-byte reads split image header safely",[]{check();routes[binaryUrl].chunk=17;install(true);});
  test("GitHub HTTPS asset redirect",[]{check();auto& r=routes[binaryUrl];r.status=302;r.redirect="https://release-assets.githubusercontent.com/fixture.bin";routes[r.redirect].body=imageBody;install(true);});
  test("same semantic version is not offered",[]{strncpy(current.version,tag.c_str(),31);check(false);});

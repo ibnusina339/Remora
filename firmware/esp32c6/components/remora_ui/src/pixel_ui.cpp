@@ -1,5 +1,6 @@
 #include "pixel_ui.hpp"
 #include "pixel_assets.hpp"
+#include "ota_presentation.hpp"
 #include "boot_logo.hpp"
 #include "esp_heap_caps.h"
 #include <algorithm>
@@ -106,7 +107,18 @@ void uiDraw(UiModel&model,bool force){m=&model;bg=m->prefs->mono?0x101010:m->pre
  else if(m->view==View::WifiScan){header("WIFI");auto nets=networkScanResults();if(networkScanning())text("MEMINDAI...",160,101,2,accent,1);else if(nets.empty()){auto rows=wrap(networkScanMessage());for(size_t i=0;i<rows.size();i++)text(rows[i],160,95+i*18,2,dim,1);}else{m->selection=std::clamp(m->selection,0,int(nets.size())-1);int first=std::max(0,m->selection-2);for(int i=0;i<4&&first+i<int(nets.size());i++){auto&n=nets[first+i];int y=39+i*40;bool selected=first+i==m->selection;rect(11,y,298,36,selected?accent:panel);text(n.ssid.substr(0,21),22,y+5,2,selected?0x090b0d:paper);smallText(std::string(n.secured?"TERKUNCI":"TANPA PASSWORD")+" / "+number(n.rssi)+" DBM",22,y+24,selected?0x090b0d:dim,0);}}footer({networkScanning()?nullptr:"SCAN",nets.empty()?nullptr:"UP",nullptr,"BACK",nets.empty()?nullptr:"DOWN",nets.empty()?nullptr:"CONNECT"});}
  else if(m->view==View::Network)list("NETWORK",{"SCAN WIFI","PHONE SETUP","CONNECT SAVED","WIFI STATUS","OTA UPDATE"});
  else if(m->view==View::Portal){header("PHONE SETUP");text("REMORA-SETUP",160,65,3,accent,1);text("PASS "+portalPassword(),160,114,2,paper,1);text("192.168.4.1",160,153,3,paper,1);footer({nullptr,nullptr,nullptr,"BACK"});}
- else if(m->view==View::Ota){header("GITHUB OTA");auto o=otaStatus();text("VERSI "+o.version,15,49,2,accent);auto lines=wrap(o.message);for(size_t i=0;i<std::min(size_t(4),lines.size());i++)text(lines[i],15,84+i*20,2,paper);frame(15,177,290,10,lineColor);rect(17,179,286*o.progress/100,6,accent);footer({nullptr,nullptr,nullptr,o.busy?"CANCEL":"BACK",nullptr,o.busy?nullptr:o.available?"INSTALL":"CHECK"});}
+ else if(m->view==View::Ota){
+  header("GITHUB OTA");auto o=otaStatus();text("VERSI "+o.version,15,49,2,accent);
+  auto presentation=otaPresentation(o.busy,o.available,o.version,o.message);
+  if(presentation==OtaPresentation::Ready){
+   auto version=otaVersionLabel(o.version);
+   text("READY TO UPDATE TO",160,89,2,paper,1);text(version+" VERSION",160,116,2,accent,1);
+   smallText("HIJAU PASANG / MERAH KEMBALI",160,154,dim,1);
+  }else if(presentation==OtaPresentation::Latest){text("LATEST FIRMWARE",160,101,2,paper,1);smallText("TIDAK ADA VERSI LEBIH BARU",160,143,dim,1);}
+  else {auto lines=wrap(o.message);for(size_t i=0;i<std::min(size_t(4),lines.size());i++)text(lines[i],15,84+i*20,2,paper);}
+  if(o.busy||o.progress>0){frame(15,177,290,10,lineColor);rect(17,179,286*o.progress/100,6,accent);}
+  footer({nullptr,nullptr,nullptr,o.busy?"CANCEL":"BACK",nullptr,o.busy?nullptr:o.available?"INSTALL":"CHECK"});
+ }
  else if(m->view==View::Profiles){std::vector<std::string>names;for(int i=0;i<ProfileCount;i++)names.push_back(p.profiles[i].used?std::string(i==p.active?"> ":"  ")+p.profiles[i].player:"+ ADD PLAYER");list("PLAYER PROFILE",names);}
  else if(m->view==View::ProfileAction){list("PLAYER",{"SWITCH USER","EDIT NAME","DELETE USER"});}
  else if(m->view==View::ConfirmDelete||m->view==View::ConfirmFirst){header("KONFIRMASI");text(m->view==View::ConfirmDelete?"HAPUS PEMAIN INI?":"FIRST LOGIN?",160,67,2,accent,1);smallText(m->view==View::ConfirmDelete?"DATA PEMAIN AKAN DIHAPUS":"BUAT PEMAIN BARU SAAT NYALA",160,119,paper,1);smallText(m->view==View::ConfirmFirst?"PROFIL LAIN TETAP TERSIMPAN":"TIDAK BISA DIBATALKAN",160,148,dim,1);footer({nullptr,nullptr,nullptr,"BATAL",nullptr,"YA"});}

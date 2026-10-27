@@ -13,3 +13,5 @@ require('./polish-reminders-smoke.cjs');
 
 require('./auto-off-smoke.cjs');
 require('./game-variety-smoke.cjs');
+
+require('./ota-status-smoke.cjs');

@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),path=require('node:path');
+const {launch}=require('./pixel-harness.cjs');
+const app=launch();app.boot();app.show({view:'network',networkSelection:2,wifiConfigured:true,wifiSSID:'SIMULATION',wifiPower:'on'});app.press(6);
+assert.equal(app.state().view,'networkDemo');assert.equal(app.state().networkOperation,'OTA UPDATE');
+assert.notEqual(app.state().otaBusy,true);assert.notEqual(app.state().otaAvailable,true);
+for(const [x,y,w,h]of app.drawCalls)assert.ok(x>=0&&y>=0&&x+w<=320&&y+h<=240,`OTA demo outside LCD: ${[x,y,w,h]}`);
+app.capture(path.join(__dirname,'../previews/ota-status-demo.png'));
+app.press(6);assert.equal(app.state().view,'networkDemo','demo must not pretend to install an image');
+app.press(4);assert.equal(app.state().view,'network');assert.equal(app.state().networkSelection,2);
+console.log('OTA status: simulator examples labelled as demo, no fake offer/install, back navigation and LCD bounds OK');

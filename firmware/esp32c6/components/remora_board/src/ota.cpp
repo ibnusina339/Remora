@@ -14,6 +14,8 @@
 #include <cstring>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
+#include <memory>
 
 namespace remora {
 static constexpr const char* Api="https://api.github.com/repos/ibnusina339/Remora/releases/latest";
@@ -76,20 +78,33 @@ static bool synchronizeClock() {
  }
  esp_netif_sntp_deinit();return ok&&time(nullptr)>1700000000;
 }
-static std::string get(const std::string& url,size_t limit) {
+struct MetadataDeleter {void operator()(char* p)const{std::free(p);}};
+struct Metadata {
+ std::unique_ptr<char,MetadataDeleter> bytes;size_t size=0;
+ const char* c_str()const{return bytes?bytes.get():"";}
+ explicit operator bool()const{return bool(bytes);}
+ void reset(){bytes.reset();size=0;}
+};
+using MetadataAllocator=void*(*)(size_t);
+static Metadata get(const std::string& url,size_t limit,MetadataAllocator allocate=std::malloc) {
+ // Reserve the whole bounded payload before TLS fragments the C6 internal heap.
+ Metadata body;body.bytes.reset(static_cast<char*>(allocate(limit+1)));
+ if(!body){set("Memori OTA tidak cukup. Coba lagi.");return {};}
  auto client=open(url);if(!client)return {};
- std::string body;char buffer[1024];bool ok=true;
+ char buffer[1024];bool ok=true;
  while(!cancelled) {
   int n=esp_http_client_read(client,buffer,sizeof(buffer));
   if(n<0){ok=false;break;}
   if(!n)break;
-  if(body.size()+n>limit){ok=false;break;}
-  body.append(buffer,n);
+  if(size_t(n)>limit-body.size){ok=false;break;}
+  memcpy(body.bytes.get()+body.size,buffer,n);body.size+=n;
   if(esp_http_client_is_complete_data_received(client))break;
  }
  ok=ok&&!cancelled&&esp_http_client_is_complete_data_received(client);
- printf("OTA|METADATA|resource=%s|bytes=%u|complete=%d|ok=%d\n",url==Api?"release":"manifest",unsigned(body.size()),esp_http_client_is_complete_data_received(client),ok);
- close(client);return ok?body:std::string{};
+ printf("OTA|METADATA|resource=%s|bytes=%u|complete=%d|ok=%d\n",url==Api?"release":"manifest",unsigned(body.size),esp_http_client_is_complete_data_received(client),ok);
+ close(client);
+ if(!ok)return {};
+ body.bytes.get()[body.size]='\0';return body;
 }
 static bool validManifest(const cJSON* manifest,const SemVer& release) {
  auto size=cJSON_GetObjectItemCaseSensitive(manifest,"size");
@@ -128,14 +143,16 @@ static void checkRelease() {
    }
    // Release the large GitHub document before starting another TLS session.
    // With the framebuffer allocated, retaining both JSON copies can exhaust C6 heap.
-   cJSON_Delete(json);json=nullptr;std::string{}.swap(body);
+   cJSON_Delete(json);json=nullptr;body.reset();
    auto text=get(manifestUrl,4096);auto manifest=cJSON_Parse(text.c_str());
    if(manifest){ok=validManifest(manifest,next);cJSON_Delete(manifest);}
    if(ok&&!cancelled) {
     std::lock_guard<std::mutex> lock(mutex);
-    status.available=true;status.version=tag;status.message="Update tersedia. Hijau: pasang.";
+    status.available=true;status.version=tag;status.message="Ready to update to "+(tag[0]=='v'?tag.substr(1):tag)+" version";
    }
-  }else if(next.valid&&current.valid)set("Firmware sudah terbaru.");
+  }else if(next.valid&&next.pre.empty()&&current.valid&&next.compare(current)<=0){
+   std::lock_guard<std::mutex> lock(mutex);status.version=esp_app_get_description()->version;status.message="Latest firmware";
+  }
  }
  if(json)cJSON_Delete(json);
  {

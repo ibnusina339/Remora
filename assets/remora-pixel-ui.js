@@ -600,6 +600,11 @@
       }else if(v==='ledTest'){detail('LED TEST',['RED','GREEN','BLUE','WHITE'][s.ledTestColor],'LIHAT KEENAM TOMBOL','light',[null,null,null,'BACK']);}
       else if(v==='phoneSetup'){
         header('PHONE SETUP');smallText('HUBUNGKAN PONSEL KE:',15,48,P.dim);text('REMORA-'+s.playerId.slice(-4),15,71,2,P.amber);smallText('PASS: '+s.portalAPPassword,15,108,P.paper);text('OPEN 192.168.4.1',15,137,2,P.paper);smallText('FORM DEMO ADA DI BAWAH KONSOL',15,184,P.dim);footer([null,null,null,'BACK']);
+      }else if(v==='networkDemo'&&s.networkOperation==='OTA UPDATE'){
+        header('GITHUB OTA','DEMO');smallText('CONTOH STATUS / TANPA SERVER',160,42,P.dim,'center');
+        text('READY TO UPDATE TO',160,78,2,P.paper,'center');text('X.X.X VERSION',160,103,2,P.amber,'center');
+        line(31,135,289,135,P.line);text('LATEST FIRMWARE',160,154,2,P.paper,'center');
+        smallText('BROWSER TIDAK MEMASANG FIRMWARE',160,187,P.dim,'center');footer([null,null,null,'BACK']);
       }else if(['wifiNotSet','wifiConnecting','wifiResult','wifiStatus','forgetWifi','networkDemo'].includes(v)){
         const details={wifiNotSet:['WIFI','WIFI NOT SET','SETUP WIFI?', 'SETUP'],wifiConnecting:['WIFI','CONNECTING...','SIMULATION',null],wifiResult:['WIFI',s.networkError?'FAILED':'CONNECTED',s.networkError||s.wifiSSID,'RETRY'],wifiStatus:['WIFI STATUS',s.wifiPower==='off'?'WIFI OFF':'WIFI ON',s.wifiSSID||'NO NETWORK',null],forgetWifi:['FORGET WIFI','HAPUS JARINGAN?',s.wifiSSID||'NONE','CONFIRM'],networkDemo:[s.networkOperation,'NETWORK DEMO','NO SERVER CONNECTED',null]};
         const [a,b,c,d]=details[v];
