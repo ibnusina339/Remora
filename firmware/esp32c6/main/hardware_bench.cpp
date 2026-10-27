@@ -89,6 +89,7 @@ static void probe(){
 }
 static std::string portalCookie;
 static esp_err_t portalEvent(esp_http_client_event_t* e){
+ if(e->event_id==HTTP_EVENT_ON_DATA&&e->user_data){auto&body=*static_cast<std::string*>(e->user_data);if(body.size()+e->data_len>24576)return ESP_FAIL;body.append(static_cast<const char*>(e->data),e->data_len);}
  if(e->event_id==HTTP_EVENT_ON_HEADER&&e->header_key&&e->header_value){
   if(!strcasecmp(e->header_key,"Location"))printf("BENCH|PORTAL_REDIRECT|%.300s\n",e->header_value);
   if(!strcasecmp(e->header_key,"Set-Cookie")){std::string v=e->header_value;v=v.substr(0,v.find(';'));if(!portalCookie.empty())portalCookie+="; ";portalCookie+=v;}
@@ -96,24 +97,16 @@ static esp_err_t portalEvent(esp_http_client_event_t* e){
  return ESP_OK;
 }
 static void portalPage(const std::string& path,const std::string& form=""){
- // Portal address verified with the local DNS resolver on the authorized school network.
- std::string url="http://10.10.10.1"+path;
- esp_http_client_config_t c{};c.url=url.c_str();c.timeout_ms=10000;c.buffer_size=1024;c.event_handler=portalEvent;c.disable_auto_redirect=true;
+ std::string url="http://10.10.10.1"+path,body;
+ esp_http_client_config_t c{};c.url=url.c_str();c.timeout_ms=8000;c.buffer_size=1024;c.event_handler=portalEvent;c.user_data=&body;c.disable_auto_redirect=true;
  auto h=esp_http_client_init(&c);if(!h){printf("BENCH|PORTAL|ALLOC_FAILED\n");return;}
- esp_http_client_set_header(h,"User-Agent","Remora-ESP32C6");
- esp_http_client_set_header(h,"Host","icpaser.net");
+ esp_http_client_set_header(h,"User-Agent","Remora-ESP32C6");esp_http_client_set_header(h,"Host","icpaser.net");esp_http_client_set_header(h,"Connection","close");
  if(!portalCookie.empty())esp_http_client_set_header(h,"Cookie",portalCookie.c_str());
- if(!form.empty()){esp_http_client_set_method(h,HTTP_METHOD_POST);esp_http_client_set_header(h,"Content-Type","application/x-www-form-urlencoded");}
- auto e=esp_http_client_open(h,form.size());
- if(e==ESP_OK&&!form.empty()){int written=esp_http_client_write(h,form.data(),form.size());if(written!=int(form.size()))e=ESP_FAIL;}
- auto length=e==ESP_OK?esp_http_client_fetch_headers(h):-1;int code=e==ESP_OK?esp_http_client_get_status_code(h):0;
- printf("BENCH|PORTAL|path=%s|method=%s|open=%s|headers=%lld|status=%d\n",path.c_str(),form.empty()?"GET":"POST",esp_err_to_name(e),(long long)length,code);
- std::string body;char buffer[513];int n;
- if(e==ESP_OK)while(body.size()<24576&&(n=esp_http_client_read(h,buffer,512))>0)body.append(buffer,n);
- esp_http_client_close(h);esp_http_client_cleanup(h);
+ if(!form.empty()){esp_http_client_set_method(h,HTTP_METHOD_POST);esp_http_client_set_header(h,"Content-Type","application/x-www-form-urlencoded");esp_http_client_set_post_field(h,form.data(),form.size());}
+ auto e=esp_http_client_perform(h);int code=esp_http_client_get_status_code(h);esp_http_client_cleanup(h);
+ printf("BENCH|PORTAL|path=%s|method=%s|open=%s|status=%d\n",path.c_str(),form.empty()?"GET":"POST",esp_err_to_name(e),code);
  printf("BENCH|PORTAL_BODY_BEGIN\n%s\nBENCH|PORTAL_BODY_END|bytes=%u\n",body.c_str(),unsigned(body.size()));
 }
-
 extern "C" void app_main(){
  setvbuf(stdout,nullptr,_IONBF,0);setvbuf(stdin,nullptr,_IONBF,0);
  auto n=nvs_flash_init();auto u=nvs_flash_init_partition("userdata");
