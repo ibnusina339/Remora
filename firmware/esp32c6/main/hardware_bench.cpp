@@ -9,6 +9,8 @@
 #include "esp_app_desc.h"
 #include "esp_system.h"
 #include "esp_netif.h"
+#include "esp_event.h"
+#include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
@@ -20,6 +22,11 @@
 using namespace remora;
 static const char* Ssid="MAN Insan Cendekia Paser";
 static constexpr const char* Sentinel="REMORA-COM13-OTA-20261027";
+static void wifiEvent(void*,esp_event_base_t,int32_t id,void* data){
+ printf("BENCH|WIFI_EVENT|id=%ld|stackFree=%lu\n",(long)id,(unsigned long)uxTaskGetStackHighWaterMark(nullptr));
+ if(id==WIFI_EVENT_STA_DISCONNECTED){auto*d=static_cast<wifi_event_sta_disconnected_t*>(data);printf("BENCH|WIFI_DISCONNECTED|reason=%d|rssi=%d\n",d->reason,d->rssi);}
+ if(id==WIFI_EVENT_STA_CONNECTED)printf("BENCH|WIFI_ASSOCIATED\n");
+}
 static void status(){
  auto p=esp_ota_get_running_partition();auto o=otaStatus();esp_ota_img_states_t st=ESP_OTA_IMG_UNDEFINED;
  auto err=esp_ota_get_state_partition(p,&st);
@@ -68,7 +75,8 @@ extern "C" void app_main(){
  if(n!=ESP_OK||u!=ESP_OK){printf("BENCH|FATAL|NVS_INIT\n");return;}
  // Only this isolated diagnostic image is confirmed without display/ADC checks.
  auto valid=esp_ota_mark_app_valid_cancel_rollback();printf("BENCH|DIAGNOSTIC_IMAGE|confirm=%s\n",esp_err_to_name(valid));
- status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT CHECK INSTALL CANCEL CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
+ networkInit();esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifiEvent,nullptr);
+ status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT LEGACY CHECK INSTALL CANCEL CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
  std::string line;
  while(true){
   int c=getchar();
@@ -83,6 +91,7 @@ extern "C" void app_main(){
    for(auto&r:networkScanResults())printf("BENCH|AP|ssid=%s|secured=%d|rssi=%d\n",r.ssid.c_str(),r.secured,r.rssi);
   }
   else if(command=="CONNECT"){networkConnect(Ssid,"");printf("BENCH|CONNECT|START|ssid=%s|password=EMPTY\n",Ssid);}
+  else if(command=="LEGACY"){networkStop();auto e=esp_wifi_set_protocol(WIFI_IF_STA,WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N);printf("BENCH|LEGACY_WIFI|%s\n",esp_err_to_name(e));networkConnect(Ssid,"");esp_wifi_set_ps(WIFI_PS_NONE);}
   else if(command=="CHECK"){otaCheck();printf("BENCH|CHECK|START\n");}
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}
   else if(command=="CANCEL"){otaCancel();printf("BENCH|CANCEL|REQUESTED\n");}
