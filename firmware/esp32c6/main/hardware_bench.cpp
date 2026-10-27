@@ -3,6 +3,7 @@
 #undef NDEBUG
 #endif
 #include "board.hpp"
+#include "pixel_ui.hpp"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_app_desc.h"
@@ -44,6 +45,22 @@ static void sentinel(bool write){
  }
  printf("BENCH|NVS|%s|%s\n",write?"WRITE":"VERIFY",esp_err_to_name(err));fflush(stdout);
 }
+static void renderTest(){
+ static bool initialized=false;static Preferences preferences;static GameEngine engine;
+ if(!initialized){preferences=defaults();load(preferences);displayInitLvgl();uiInit();initialized=true;}
+ UiModel model;model.prefs=&preferences;model.engine=&engine;model.power=PowerPhase::Play;
+ model.battery={3970,78,true,false};model.now=1000;int frames=0;
+ for(int game=0;game<GameCount;game++){
+  model.game=game;model.view=View::Home;uiDraw(model,true);lv_timer_handler();++frames;
+  for(int difficulty=0;difficulty<5;difficulty++){
+   preferences.difficulty[game]=difficulty;model.view=View::Pregame;uiDraw(model,true);lv_timer_handler();++frames;
+  }
+ }
+ for(auto view:{View::Settings,View::Sound,View::Display,View::Profiles,View::Stats,View::RateMenu,View::RateInvite,View::ConfirmShutdown,View::Shutdown}){
+  model.view=view;uiDraw(model,true);lv_timer_handler();++frames;
+ }
+ printf("BENCH|UI|PASS|frames=%d|framebuffer=153600|draw_buffers=20480|lcd_connected=0|heap=%lu\n",frames,(unsigned long)esp_get_free_heap_size());
+}
 extern "C" void app_main(){
  setvbuf(stdout,nullptr,_IONBF,0);setvbuf(stdin,nullptr,_IONBF,0);
  auto n=nvs_flash_init();auto u=nvs_flash_init_partition("userdata");
@@ -51,7 +68,7 @@ extern "C" void app_main(){
  if(n!=ESP_OK||u!=ESP_OK){printf("BENCH|FATAL|NVS_INIT\n");return;}
  // Only this isolated diagnostic image is confirmed without display/ADC checks.
  auto valid=esp_ota_mark_app_valid_cancel_rollback();printf("BENCH|DIAGNOSTIC_IMAGE|confirm=%s\n",esp_err_to_name(valid));
- status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT CHECK INSTALL CANCEL CORE NVSSET NVSVERIFY ARM REBOOT\n");
+ status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT CHECK INSTALL CANCEL CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
  std::string line;
  while(true){
   int c=getchar();
@@ -70,6 +87,7 @@ extern "C" void app_main(){
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}
   else if(command=="CANCEL"){otaCancel();printf("BENCH|CANCEL|REQUESTED\n");}
   else if(command=="CORE"){printf("BENCH|CORE|START|games=11|presets=5\n");runCoreTests();printf("BENCH|CORE|PASS\n");}
+  else if(command=="UI")renderTest();
   else if(command=="NVSSET")sentinel(true);
   else if(command=="NVSVERIFY")sentinel(false);
   else if(command=="ARM"){auto e=esp_ota_set_boot_partition(esp_ota_get_running_partition());printf("BENCH|ARM|%s\n",esp_err_to_name(e));if(e==ESP_OK){vTaskDelay(pdMS_TO_TICKS(150));esp_restart();}}

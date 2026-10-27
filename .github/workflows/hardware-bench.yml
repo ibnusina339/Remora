@@ -23,7 +23,7 @@ jobs:
           test=(root/'tests/core_test.cpp').read_text().replace('int main(){','static void runCoreTests(){')
           test=test.replace('for(int tries=0;tries<100000;tries++){','for(int tries=0;tries<100000;tries++){if(tries%128==0)vTaskDelay(1);')
           (root/'main/core_bench.inc').write_text(test)
-          (root/'main/CMakeLists.txt').write_text('idf_component_register(SRCS "hardware_bench.cpp" INCLUDE_DIRS "." "../tests" REQUIRES remora_board remora_core nvs_flash esp_timer app_update esp_system esp_netif)\n')
+          (root/'main/CMakeLists.txt').write_text('idf_component_register(SRCS "hardware_bench.cpp" INCLUDE_DIRS "." "../tests" REQUIRES remora_ui remora_board remora_core nvs_flash esp_timer app_update esp_system esp_netif)\n')
           PY
           cd firmware/esp32c6
           idf.py set-target esp32c6
