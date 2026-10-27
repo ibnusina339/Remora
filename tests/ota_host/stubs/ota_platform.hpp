@@ -16,6 +16,9 @@
 using esp_err_t = int;
 constexpr int ESP_OK=0, ESP_FAIL=-1, pdPASS=1;
 constexpr int HTTP_TRANSPORT_OVER_SSL=2, HTTP_TRANSPORT_OVER_TCP=1;
+enum esp_http_client_method_t {HTTP_METHOD_GET,HTTP_METHOD_HEAD};
+enum esp_http_client_event_id_t {HTTP_EVENT_ON_HEADER};
+struct esp_http_client_event_t {int event_id=HTTP_EVENT_ON_HEADER;void*user_data=nullptr;char*header_key=nullptr;char*header_value=nullptr;void*data=nullptr;int data_len=0;};
 #define pdMS_TO_TICKS(x) (x)
 struct esp_partition_t { uint32_t address=0x200000, size=0x1e0000; };
 using esp_ota_handle_t = unsigned;
@@ -34,9 +37,13 @@ namespace fixture {
 struct Response {
  std::string body,redirect;
  int status=200,chunk=2048,failAfter=-1,cancelAfter=-1;
- bool headersOk=true,complete=true,connect=true;
+ bool headersOk=true,complete=true,connect=true,cancelOnHeaders=false;
+ std::vector<std::pair<std::string,std::string>> headers;
 };
 inline std::map<std::string,Response> routes;
+struct Request {std::string url;int method=HTTP_METHOD_GET,txBuffer=512,rxBuffer=0;bool disableAutoRedirect=false;};
+inline std::vector<Request> requests;
+inline int headRequests=0,getRequests=0,headReads=0;
 inline std::function<void(const std::string&)> beforeHttpOpen;
 inline std::vector<std::function<void()>> tasks;
 inline esp_partition_t partition;
@@ -91,25 +98,41 @@ extern "C" time_t __wrap_time(time_t* out) { if(out)*out=fixture::clock;return f
 inline int esp_crt_bundle_attach(void*) { return ESP_OK; }
 struct esp_http_client_config_t {
  const char* url=nullptr;int transport_type=0;int(*crt_bundle_attach)(void*)=nullptr;
- int timeout_ms=0,buffer_size=0,buffer_size_tx=0,max_redirection_count=0;bool keep_alive_enable=false;
+ int timeout_ms=0,buffer_size=0,buffer_size_tx=0,max_redirection_count=0;bool keep_alive_enable=false,disable_auto_redirect=false;
+ esp_http_client_method_t method=HTTP_METHOD_GET;esp_err_t(*event_handler)(esp_http_client_event_t*)=nullptr;void*user_data=nullptr;
 };
-struct MockHttp { std::string url;size_t offset=0;int count=0;std::map<std::string,std::string>headers;int txBuffer=512; };
+struct MockHttp {
+ std::string url;size_t offset=0;int count=0;std::map<std::string,std::string>headers;int txBuffer=512,rxBuffer=0;
+ esp_http_client_method_t method=HTTP_METHOD_GET;bool disableAutoRedirect=false;esp_err_t(*eventHandler)(esp_http_client_event_t*)=nullptr;void*userData=nullptr;
+};
 using esp_http_client_handle_t=MockHttp*;
 inline MockHttp* esp_http_client_init(const esp_http_client_config_t* c) {
  fixture::require(c->crt_bundle_attach&&c->transport_type==HTTP_TRANSPORT_OVER_SSL,"HTTPS certificate verification missing");
  if(!fixture::initOk)return nullptr;
- ++fixture::clients;return new MockHttp{c->url,0,0,{},c->buffer_size_tx?c->buffer_size_tx:512};
+ ++fixture::clients;auto*h=new MockHttp;h->url=c->url;h->txBuffer=c->buffer_size_tx?c->buffer_size_tx:512;h->rxBuffer=c->buffer_size;
+ h->method=c->method;h->disableAutoRedirect=c->disable_auto_redirect;h->eventHandler=c->event_handler;h->userData=c->user_data;return h;
 }
+inline int esp_http_client_set_method(MockHttp*h,esp_http_client_method_t method){h->method=method;return ESP_OK;}
 inline int esp_http_client_set_header(MockHttp* h,const char* k,const char* v) { h->headers[k]=v;return ESP_OK; }
 inline int esp_http_client_open(MockHttp* h,int) {
  if(fixture::beforeHttpOpen)fixture::beforeHttpOpen(h->url);
+ fixture::requests.push_back({h->url,h->method,h->txBuffer,h->rxBuffer,h->disableAutoRedirect});
+ if(h->method==HTTP_METHOD_HEAD)++fixture::headRequests;else ++fixture::getRequests;
  if(h->url.size()+128>size_t(h->txBuffer))return ESP_FAIL;
  fixture::require(h->headers["User-Agent"]=="Remora-ESP32C6","missing firmware user agent");
  if(h->url.rfind("https://",0)!=0)++fixture::insecure;
  h->offset=0;h->count=0;
  return fixture::routes.count(h->url)&&fixture::routes.at(h->url).connect?ESP_OK:ESP_FAIL;
 }
-inline int64_t esp_http_client_fetch_headers(MockHttp* h) { const auto&r=fixture::routes.at(h->url);return r.headersOk?int64_t(r.body.size()):-1; }
+inline int64_t esp_http_client_fetch_headers(MockHttp* h) {
+ auto&r=fixture::routes.at(h->url);if(!r.headersOk)return -1;
+ if(r.cancelOnHeaders)fixture::cancel();
+ if(h->eventHandler){
+  auto headers=r.headers;if(headers.empty()&&!r.redirect.empty())headers.push_back({"Location",r.redirect});
+  for(auto&entry:headers){esp_http_client_event_t event;event.user_data=h->userData;event.header_key=entry.first.data();event.header_value=entry.second.data();if(h->eventHandler(&event)!=ESP_OK)return -1;}
+ }
+ return int64_t(r.body.size());
+}
 inline int esp_http_client_get_status_code(MockHttp* h) { return fixture::routes.at(h->url).status; }
 inline int esp_http_client_set_redirection(MockHttp* h) {
  auto url=fixture::routes.at(h->url).redirect;if(url.empty())return ESP_FAIL;h->url=url;return ESP_OK;
@@ -117,10 +140,15 @@ inline int esp_http_client_set_redirection(MockHttp* h) {
 inline int esp_http_client_get_transport_type(MockHttp* h) { return h->url.rfind("https://",0)==0?HTTP_TRANSPORT_OVER_SSL:HTTP_TRANSPORT_OVER_TCP; }
 inline int esp_http_client_read(MockHttp* h,char* data,int len) {
  const auto&r=fixture::routes.at(h->url);++fixture::reads;
+ if(h->method==HTTP_METHOD_HEAD){++fixture::headReads;fixture::require(false,"HEAD response body must never be read");}
  if(r.cancelAfter>=0&&h->count>=r.cancelAfter)fixture::cancel();
  if(r.failAfter>=0&&h->count>=r.failAfter)return ESP_FAIL;
  ++h->count;size_t n=std::min({size_t(len),size_t(r.chunk),r.body.size()-h->offset});
  memcpy(data,r.body.data()+h->offset,n);h->offset+=n;return int(n);
+}
+inline int esp_http_client_perform(MockHttp*h){
+ if(esp_http_client_open(h,0)!=ESP_OK||esp_http_client_fetch_headers(h)<0)return ESP_FAIL;
+ fixture::require(h->method==HTTP_METHOD_HEAD,"fixture perform only supports the latest HEAD request");return ESP_OK;
 }
 inline bool esp_http_client_is_complete_data_received(MockHttp* h) { const auto&r=fixture::routes.at(h->url);return r.complete&&h->offset==r.body.size(); }
 inline int esp_http_client_close(MockHttp*) { return ESP_OK; }

@@ -16,9 +16,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <cctype>
 
 namespace remora {
-static constexpr const char* Api="https://api.github.com/repos/ibnusina339/Remora/releases/latest";
+static constexpr const char* Latest="https://github.com/ibnusina339/Remora/releases/latest";
+static constexpr const char* TagPrefix="https://github.com/ibnusina339/Remora/releases/tag/";
 static constexpr const char* Prefix="https://github.com/ibnusina339/Remora/releases/download/";
 static constexpr size_t ImageDescriptorEnd=sizeof(esp_image_header_t)+sizeof(esp_image_segment_header_t)+sizeof(esp_app_desc_t);
 static OtaStatus status;
@@ -41,6 +43,43 @@ static std::string str(const cJSON* json,const char* key) {
 static void close(esp_http_client_handle_t client) {
  esp_http_client_close(client);esp_http_client_cleanup(client);
 }
+struct LatestLocation {std::array<char,256> value{};bool seen=false,invalid=false;};
+static esp_err_t latestHeader(esp_http_client_event_t* event){
+ if(event->event_id!=HTTP_EVENT_ON_HEADER||!event->header_key||!event->user_data)return ESP_OK;
+ const char* key="location";
+ for(int i=0;i<8;i++)if(std::tolower(static_cast<unsigned char>(event->header_key[i]))!=key[i])return ESP_OK;
+ if(event->header_key[8])return ESP_OK;
+ auto& location=*static_cast<LatestLocation*>(event->user_data);
+ if(location.seen){location.invalid=true;return ESP_OK;}location.seen=true;
+ size_t length=event->header_value?strlen(event->header_value):0;
+ if(!length||length>=location.value.size()){location.invalid=true;return ESP_OK;}
+ memcpy(location.value.data(),event->header_value,length);location.value[length]='\0';return ESP_OK;
+}
+static std::string resolveLatest(){
+ if(cancelled)return {};
+ LatestLocation location;esp_http_client_config_t config{};
+ config.url=Latest;config.method=HTTP_METHOD_HEAD;config.transport_type=HTTP_TRANSPORT_OVER_SSL;
+ config.crt_bundle_attach=esp_crt_bundle_attach;config.timeout_ms=15000;
+ config.buffer_size=1024;config.buffer_size_tx=512;config.disable_auto_redirect=true;
+ config.event_handler=latestHeader;config.user_data=&location;
+ auto client=esp_http_client_init(&config);if(!client)return {};
+ esp_http_client_set_header(client,"User-Agent","Remora-ESP32C6");
+ esp_http_client_set_header(client,"Accept","text/html");esp_http_client_set_header(client,"Connection","close");
+ int opened=esp_http_client_open(client,0);auto length=opened==ESP_OK?esp_http_client_fetch_headers(client):-1;
+ int code=opened==ESP_OK?esp_http_client_get_status_code(client):0;
+ printf("OTA|LATEST|open=%d|status=%d|redirect=%d\n",opened,code,location.seen&&!location.invalid);
+ close(client);
+ if(code==403||code==429)set("GitHub membatasi akses. Coba lagi nanti.");
+ bool redirect=code==301||code==302||code==303||code==307||code==308;
+ if(cancelled||opened!=ESP_OK||length<0||!redirect||!location.seen||location.invalid)return {};
+ std::string target=location.value.data(),prefix=TagPrefix;
+ if(target.rfind(prefix,0)!=0)return {};
+ auto tag=target.substr(prefix.size());
+ if(tag.empty()||tag.size()>128||!std::all_of(tag.begin(),tag.end(),[](unsigned char c){
+  return (c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='.'||c=='-'||c=='+';
+ }))return {};
+ return tag;
+}
 static esp_http_client_handle_t open(const std::string& url) {
  if(cancelled||url.rfind("https://",0)!=0)return nullptr;
  esp_http_client_config_t config{};
@@ -48,19 +87,19 @@ static esp_http_client_handle_t open(const std::string& url) {
  config.crt_bundle_attach=esp_crt_bundle_attach;config.timeout_ms=15000;
  config.buffer_size=2048;config.keep_alive_enable=false;
  // GitHub asset redirects contain long signed URLs; keep release API requests small.
- config.buffer_size_tx=url==Api?512:4096;config.max_redirection_count=8;
+ config.buffer_size_tx=url==Latest?512:4096;config.max_redirection_count=8;
  auto client=esp_http_client_init(&config);
  if(!client)return nullptr;
  esp_http_client_set_header(client,"User-Agent","Remora-ESP32C6");
  esp_http_client_set_header(client,"Connection","close");
- esp_http_client_set_header(client,"Accept",url==Api?"application/vnd.github+json":"application/octet-stream");
+ esp_http_client_set_header(client,"Accept","application/octet-stream");
  // Streaming mode handles redirects explicitly, retaining certificate checks.
  for(int redirects=0;redirects<=8&&!cancelled;++redirects) {
   if(esp_http_client_get_transport_type(client)!=HTTP_TRANSPORT_OVER_SSL)break;
   int opened=esp_http_client_open(client,0);
   auto length=opened==ESP_OK?esp_http_client_fetch_headers(client):-1;
   int code=opened==ESP_OK?esp_http_client_get_status_code(client):0;
-  printf("OTA|HTTP|resource=%s|open=%d|length=%lld|status=%d\n",url==Api?"release":"asset",opened,(long long)length,code);
+  printf("OTA|HTTP|resource=%s|open=%d|length=%lld|status=%d\n",url==Latest?"release":"asset",opened,(long long)length,code);
   if(opened!=ESP_OK||length<0)break;
   if(code==200)return client;
   if(code==403||code==429)set("GitHub membatasi akses. Coba lagi nanti.");
@@ -103,7 +142,7 @@ static Metadata get(const std::string& url,size_t limit,MetadataAllocator alloca
   if(esp_http_client_is_complete_data_received(client))break;
  }
  ok=ok&&!cancelled&&esp_http_client_is_complete_data_received(client);
- printf("OTA|METADATA|resource=%s|bytes=%u|complete=%d|ok=%d\n",url==Api?"release":"manifest",unsigned(body.size),esp_http_client_is_complete_data_received(client),ok);
+ printf("OTA|METADATA|resource=%s|bytes=%u|complete=%d|ok=%d\n",url==Latest?"release":"manifest",unsigned(body.size),esp_http_client_is_complete_data_received(client),ok);
  close(client);
  if(!ok)return {};
  body.bytes.get()[body.size]='\0';return body;
@@ -131,32 +170,19 @@ static void checkRelease() {
   finished();return;
  }
  set("Memeriksa GitHub Releases...");
- auto body=get(Api,24576);auto json=cJSON_Parse(body.c_str());bool ok=false;
- if(json&&!cJSON_IsTrue(cJSON_GetObjectItem(json,"prerelease"))&&!cJSON_IsTrue(cJSON_GetObjectItem(json,"draft"))) {
-  auto tag=str(json,"tag_name");auto next=SemVer::parse(tag);
-  auto current=SemVer::parse(esp_app_get_description()->version);
-  if(next.valid&&next.pre.empty()&&current.valid&&next.compare(current)>0) {
-   const auto base=std::string(Prefix)+tag+"/";std::string manifestUrl;
-   auto assets=cJSON_GetObjectItem(json,"assets");cJSON* asset;
-   cJSON_ArrayForEach(asset,assets) {
-    auto name=str(asset,"name"),url=str(asset,"browser_download_url");
-    if(name=="manifest.json"&&url==base+name)manifestUrl=url;
-    if(name=="remora-esp32c6.bin"&&url==base+name)imageUrl=url;
-   }
-   // Release the large GitHub document before starting another TLS session.
-   // With the framebuffer allocated, retaining both JSON copies can exhaust C6 heap.
-   cJSON_Delete(json);json=nullptr;body.reset();
-   auto text=get(manifestUrl,4096);auto manifest=cJSON_Parse(text.c_str());
+ // GitHub's canonical latest link resolves the stable tag without a large JSON document.
+ auto tag=resolveLatest();auto next=SemVer::parse(tag);
+ auto current=SemVer::parse(esp_app_get_description()->version);bool ok=false;
+ if(next.valid&&next.pre.empty()&&current.valid){
+  if(next.compare(current)>0){
+   const auto base=std::string(Prefix)+tag+"/";imageUrl=base+"remora-esp32c6.bin";
+   auto text=get(base+"manifest.json",4096);auto manifest=cJSON_Parse(text.c_str());
    if(manifest){ok=validManifest(manifest,next);cJSON_Delete(manifest);}
-   if(ok&&!cancelled) {
-    std::lock_guard<std::mutex> lock(mutex);
-    status.available=true;status.version=tag;status.message="Ready to update to "+(tag[0]=='v'?tag.substr(1):tag)+" version";
+   if(ok&&!cancelled){std::lock_guard<std::mutex> lock(mutex);status.available=true;status.version=tag;
+    status.message="Ready to update to "+(tag[0]=='v'?tag.substr(1):tag)+" version";
    }
-  }else if(next.valid&&next.pre.empty()&&current.valid&&next.compare(current)<=0){
-   std::lock_guard<std::mutex> lock(mutex);status.version=esp_app_get_description()->version;status.message="Latest firmware";
-  }
+  }else{std::lock_guard<std::mutex> lock(mutex);status.version=esp_app_get_description()->version;status.message="Latest firmware";}
  }
- if(json)cJSON_Delete(json);
  {
   std::lock_guard<std::mutex> lock(mutex);
   if(cancelled){status.available=false;status.message="Pemeriksaan dibatalkan.";}
