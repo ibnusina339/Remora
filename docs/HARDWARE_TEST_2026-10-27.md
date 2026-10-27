@@ -90,3 +90,15 @@ Regresi komputer terbaru menjalankan **71 skenario OTA (0 gagal)** dan **11 sken
 Bukti lokal tambahan: `runtime-idle-audio.log`, `old-radio-scan.log`, dan `flash-runtime-bench.log`. Tidak ada log autentikasi atau backup privat yang dipublikasikan.
 
 Board terakhir dikembalikan ke diagnostik runtime terbaru (descriptor 0.2.0), dengan radio tidak dinyalakan. Status slot aktif VALID dan `NVSVERIFY` ESP_OK; lihat bukti lokal `runtime-final-state.log`. Firmware produksi v0.4.1 tersedia terpisah melalui GitHub Releases.
+
+## Verifikasi rilis publik v0.4.1
+
+[Rilis v0.4.1](https://github.com/ibnusina339/Remora/releases/tag/v0.4.1) telah diterbitkan. [Pemeriksaan rilis](https://github.com/ibnusina339/Remora/actions/runs/40488874494) lulus, mencakup build ESP-IDF, 71 skenario OTA, 11 skenario lifecycle Wi-Fi, suite audio, core game, dan simulasi UI.
+
+Pemeriksaan komputer tanpa token mengonfirmasi HEAD `releases/latest` mengembalikan **302** ke tag v0.4.1. Manifest, binary OTA, dan full image terunduh melalui HTTPS tervalidasi. Binary **1,798,816 byte**, descriptor **0.4.1 / Remora**, SHA-256:
+
+```text
+b7a32dfdea8fe85ef5166bdcb14f9b471297b248efa5603232056200f298ee8f
+```
+
+Full image memuat binary yang identik di offset 0x20000 dan berakhir sebelum partisi userdata 0x3e0000; schema userdata tetap 1. Ini melengkapi validasi publik/komputer, bukan klaim instalasi OTA fisik v0.4.1 sampai boot produksi.
