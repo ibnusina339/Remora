@@ -89,7 +89,7 @@ static void rawSchoolScan(){
  e=esp_wifi_scan_get_ap_records(&count,aps.data());int found=0;
  if(e==ESP_OK)for(auto&a:aps){std::string name(reinterpret_cast<char*>(a.ssid),strnlen(reinterpret_cast<char*>(a.ssid),32));if(name.find("MAN")!=name.npos||name.find("Paser")!=name.npos){
   printf("BENCH|RAW_AP|ssid=%s|len=%u|rssi=%d|channel=%u|auth=%d|bssid=%02x:%02x:%02x:%02x:%02x:%02x|ssid_hex=",name.c_str(),unsigned(name.size()),int(a.rssi),unsigned(a.primary),int(a.authmode),a.bssid[0],a.bssid[1],a.bssid[2],a.bssid[3],a.bssid[4],a.bssid[5]);
-  for(unsigned char ch:name)printf("%02x",unsigned(ch));printf("\n");found++;
+  for(unsigned char ch:name){printf("%02x",unsigned(ch));}printf("\n");found++;
  }}
  printf("BENCH|RAW_SCAN|error=%s|aps=%u|school_aps=%d\n",esp_err_to_name(e),unsigned(count),found);
 }
@@ -184,6 +184,13 @@ extern "C" void app_main(){
    for(auto&r:networkScanResults())printf("BENCH|AP|ssid=%s|secured=%d|rssi=%d\n",r.ssid.c_str(),r.secured,r.rssi);
   }
   else if(command=="CONNECT"){networkConnect(Ssid,"");printf("BENCH|CONNECT|START|ssid=%s|password=EMPTY\n",Ssid);}
+  else if(command=="CONNECTFOUND"){
+   bool found=false;for(auto&n:networkScanResults()){
+    auto trimmed=n.ssid;while(!trimmed.empty()&&trimmed.back()==' ')trimmed.pop_back();
+    if(trimmed==Ssid&&!n.secured){networkConnect(n.ssid,"");printf("BENCH|CONNECT|START|source=scan|ssid_len=%u\n",unsigned(n.ssid.size()));found=true;break;}
+   }
+   if(!found)printf("BENCH|CONNECTFOUND|NO_MATCHING_OPEN_NETWORK\n");
+  }
   else if(command=="LEGACY"){networkStop();auto e=esp_wifi_set_protocol(WIFI_IF_STA,WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N);printf("BENCH|LEGACY_WIFI|%s\n",esp_err_to_name(e));networkConnect(Ssid,"");esp_wifi_set_ps(WIFI_PS_NONE);}
   else if(command.rfind("TIME ",0)==0){timeval value{};value.tv_sec=strtoll(command.c_str()+5,nullptr,10);auto err=value.tv_sec>1700000000?settimeofday(&value,nullptr):-1;printf("BENCH|HOST_TIME|epoch=%lld|result=%d\n",(long long)value.tv_sec,err);}
   else if(command=="PORTAL")portalPage("/login");
