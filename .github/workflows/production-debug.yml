@@ -1,0 +1,27 @@
+name: REMORA v0.4.0 production symbols
+on:
+  push:
+    branches: [codex/debug-v040-audio]
+permissions:
+  contents: read
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production source and preserve symbols
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          cd firmware/esp32c6
+          idf.py set-target esp32c6
+          idf.py build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remora-v040-production-symbols
+          path: |
+            firmware/esp32c6/build/Remora.elf
+            firmware/esp32c6/build/Remora.map
+            firmware/esp32c6/build/Remora.bin
+            firmware/esp32c6/sdkconfig
