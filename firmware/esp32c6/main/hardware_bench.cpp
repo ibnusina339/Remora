@@ -45,6 +45,12 @@ static void status(){
  }
  fflush(stdout);
 }
+static void linkInfo(){
+ wifi_ap_record_t ap{};int rssi=0;wifi_phy_mode_t phy{};wifi_bandwidth_t bw{};
+ auto e=esp_wifi_sta_get_ap_info(&ap);if(e!=ESP_OK){printf("BENCH|LINK|connected=0|error=%s\n",esp_err_to_name(e));return;}
+ esp_wifi_sta_get_rssi(&rssi);esp_wifi_sta_get_negotiated_phymode(&phy);esp_wifi_get_bandwidth(WIFI_IF_STA,&bw);
+ printf("BENCH|LINK|connected=1|rssi=%d|phy=%d|bandwidth_mhz=%d|channel=%u|tx_mbps=not_exposed|rx_mbps=not_exposed\n",rssi,int(phy),bw==WIFI_BW_HT20?20:bw==WIFI_BW_HT40?40:0,unsigned(ap.primary));
+}
 static void sentinel(bool write){
  nvs_handle_t n=0;auto err=nvs_open_from_partition("userdata","bench_ota",write?NVS_READWRITE:NVS_READONLY,&n);
  if(err==ESP_OK){
@@ -135,6 +141,8 @@ extern "C" void app_main(){
   else if(command=="PORTAL")portalPage("/login");
   else if(command.rfind("PAGE /",0)==0)portalPage(command.substr(5));
   else if(command.rfind("LOGIN ",0)==0)portalPage("/login",command.substr(6));
+  else if(command=="LINK")linkInfo();
+  else if(command=="FAST"){auto e=esp_wifi_set_ps(WIFI_PS_NONE);printf("BENCH|FAST|%s\n",esp_err_to_name(e));}
   else if(command=="PROBE")probe();
   else if(command=="CHECK"){otaCheck();printf("BENCH|CHECK|START\n");}
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}
