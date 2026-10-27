@@ -38,15 +38,17 @@ inline void*esp_netif_create_default_wifi_ap(){return nullptr;}
 struct wifi_init_config_t{};
 #define WIFI_INIT_CONFIG_DEFAULT() wifi_init_config_t{}
 inline constexpr int WIFI_MODE_STA=1,WIFI_MODE_AP=2,WIFI_IF_STA=1,WIFI_IF_AP=2,WIFI_AUTH_OPEN=0,WIFI_AUTH_WPA2_PSK=3,WIFI_PS_MIN_MODEM=1;
+inline constexpr int WIFI_FAST_SCAN=0,WIFI_ALL_CHANNEL_SCAN=1,WIFI_CONNECT_AP_BY_SIGNAL=0,WIFI_CONNECT_AP_BY_SECURITY=1;
 struct wifi_scan_config_t{bool show_hidden=false;};
 struct wifi_ap_record_t{uint8_t ssid[33]{};int rssi=-50,authmode=WIFI_AUTH_OPEN;};
 struct wifi_config_t{
- struct{uint8_t ssid[32]{},password[64]{};struct{int authmode=0;}threshold;}sta;
+ struct{uint8_t ssid[32]{},password[64]{};int scan_method=WIFI_FAST_SCAN,sort_method=WIFI_CONNECT_AP_BY_SIGNAL;bool bssid_set=false;uint8_t bssid[6]{},channel=0,failure_retry_cnt=0;struct{int8_t rssi=0;int authmode=0;}threshold;}sta;
  struct{uint8_t ssid[33]{},password[64]{};int ssid_len=0,channel=0,max_connection=0,authmode=0;}ap;
 };
+namespace fixture {inline wifi_config_t stationConfig{};inline int stationConfigWrites=0;}
 inline esp_err_t esp_wifi_init(wifi_init_config_t*){fixture::driver();return ESP_OK;}
 inline esp_err_t esp_wifi_set_mode(int){fixture::driver();return ESP_OK;}
-inline esp_err_t esp_wifi_set_config(int,wifi_config_t*){fixture::driver();return ESP_OK;}
+inline esp_err_t esp_wifi_set_config(int interface,wifi_config_t*config){fixture::driver();if(interface==WIFI_IF_STA){fixture::stationConfig=*config;++fixture::stationConfigWrites;}return ESP_OK;}
 inline esp_err_t esp_wifi_start(){fixture::driver();fixture::driverStarted=true;++fixture::starts;return ESP_OK;}
 inline esp_err_t esp_wifi_stop(){fixture::driver();fixture::driverStarted=false;++fixture::stops;return ESP_OK;}
 inline esp_err_t esp_wifi_disconnect(){fixture::driver();return ESP_OK;}

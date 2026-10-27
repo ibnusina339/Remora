@@ -22,3 +22,9 @@ Penjadwalan koneksi dan pembacaan hasil scan berlangsung pada task aplikasi utam
 - 11 tes sumber `network.cpp` dengan I/O driver terkontrol menguji pembatalan setup, callback terlambat, kepemilikan task, dan retensi kredensial.
 
 Tes fisik ini mengonfirmasi penghentian radio. Pengurangan arus baterai/boost converter perlu diukur pada rangkaian lengkap. Lihat [laporan hardware](HARDWARE_TEST_2026-10-27.md) dan [laporan OTA](OTA_TEST_REPORT.md).
+
+## SSID dual-band dan beberapa akses poin — v0.4.2
+
+Pada jaringan yang menyiarkan satu nama untuk 2,4/5 GHz, ESP32-C6 hanya memindai dan menghubungkan radio **2,4 GHz**. Driver memindai seluruh kanal, mengurutkan kandidat berdasarkan sinyal, tidak mengunci BSSID/kanal, dan mencoba ulang satu kali per akses poin. Jaringan terbuka tetap terbuka; ambang keamanan jaringan berpassword tetap WPA2. Akses poin 5 GHz tidak menjadi kandidat.
+
+SSID/password disimpan seperti biasa. Bila perangkat berpindah lokasi, koneksi ulang dapat memilih akses poin 2,4 GHz lain dengan nama yang sama. Banyak kandidat/retry dapat memperpanjang proses; tidak ada klaim bahwa koneksi selalu selesai dalam 20 detik. Batas 20 detik hanya menahan penghitung idle, bukan membatalkan driver secara paksa.

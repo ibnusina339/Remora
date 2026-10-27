@@ -13,14 +13,46 @@ static void reset(){
  remora::scanResults.clear();remora::scanMessage.clear();remora::ssid.clear();
  fixture::starts=fixture::stops=fixture::connects=fixture::scanReads=fixture::scanClears=fixture::serverStops=0;
  fixture::milliseconds=0;fixture::driverStarted=false;fixture::receiveHook={};fixture::saved.clear();
+ fixture::stationConfig={};fixture::stationConfigWrites=0;
 }
 static void tick(int64_t now,bool otaBusy=false,bool networkScreen=true){fixture::milliseconds=now;remora::networkIdleTick(now,networkScreen,otaBusy);}
 static httpd_req_t request(){httpd_req_t r;r.body="ssid=Fixture+network&pass=fixturepass";r.content_len=int(r.body.size());return r;}
 static void post(httpd_req_t&r){fixture::onTask(2,[&]{return remora::connectPost(&r);});}
 static void scanEvent(){fixture::onTask(3,[]{remora::event(nullptr,WIFI_EVENT,WIFI_EVENT_SCAN_DONE,nullptr);return 0;});}
+static void selectionConfig(){
+ const auto&c=fixture::stationConfig.sta;
+ require(c.scan_method==WIFI_ALL_CHANNEL_SCAN,"shared SSID stopped at first matching AP");
+ require(c.sort_method==WIFI_CONNECT_AP_BY_SIGNAL,"AP selection did not prefer strongest signal");
+ require(!c.bssid_set&&c.channel==0,"AP selection pinned an old BSSID/channel");
+ require(c.threshold.rssi==-127,"weak compatible AP was filtered out");
+ require(c.failure_retry_cnt==1,"per-AP retries were not bounded to one");
+}
 static int passed=0,failed=0;
 template<class F>static void test(const char*name,F action){try{reset();action();++passed;std::cout<<"PASS "<<name<<'\n';}catch(const std::exception&e){++failed;std::cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}}
 int main(){
+ test("open shared SSID uses all-channel AP selection without WPA password",[]{
+  remora::networkConnect("Shared school SSID","");selectionConfig();
+  const auto&c=fixture::stationConfig.sta;
+  require(fixture::stationConfigWrites==1&&fixture::connects==1,"station config was not applied before connect");
+  require(std::string(reinterpret_cast<const char*>(c.ssid))=="Shared school SSID","SSID changed");
+  require(c.password[0]==0&&c.threshold.authmode==WIFI_AUTH_OPEN,"open AP received a password/security requirement");
+ });
+ test("secured shared SSID keeps password and WPA2 security threshold",[]{
+  remora::networkConnect("Shared secured SSID","fixturepass");selectionConfig();
+  const auto&c=fixture::stationConfig.sta;
+  require(std::string(reinterpret_cast<const char*>(c.password))=="fixturepass","secured AP password changed");
+  require(c.threshold.authmode==WIFI_AUTH_WPA2_PSK,"secured selection weakened auth threshold");
+ });
+ test("saved reconnect replaces stale AP hints and retains credentials",[]{
+  fixture::saved["ssid"]="Saved shared SSID";fixture::saved["pass"]="savedpass";
+  fixture::stationConfig.sta.channel=11;fixture::stationConfig.sta.bssid_set=true;
+  fixture::stationConfig.sta.sort_method=WIFI_CONNECT_AP_BY_SECURITY;
+  remora::networkConnectSaved();selectionConfig();
+  const auto&c=fixture::stationConfig.sta;
+  require(fixture::stationConfigWrites==1&&fixture::connects==1,"saved reconnect did not configure station");
+  require(std::string(reinterpret_cast<const char*>(c.ssid))=="Saved shared SSID","saved SSID lost");
+  require(std::string(reinterpret_cast<const char*>(c.password))=="savedpass"&&c.threshold.authmode==WIFI_AUTH_WPA2_PSK,"saved credentials/security lost");
+ });
  test("HTTP only queues; app_main dispatches once after delay",[]{
   remora::networkPortal();auto r=request();post(r);require(r.error==0,"POST rejected");
   require(fixture::connects==0,"HTTP called driver");tick(599);require(fixture::connects==0,"connected early");
