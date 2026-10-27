@@ -5,14 +5,14 @@
     {name:'CLASSIC',mode:'classic',pose:'stand',guide:['INGAT LAMPU, ULANGI URUTANNYA.','HARD+: POLA BARU TIAP LEVEL.','HARD+: SPEED DAN POLA PANJANG.']},
     {name:'REVERSE',mode:'reverse',pose:'back',guide:['ULANGI WARNA DARI AKHIR KE AWAL.','HARD+: POLA BARU DAN SPEED.','EXPERT+: CERMIN POSISI TOMBOL.']},
     {name:'REACTION',mode:'reaction',pose:'alert',guide:['TULISAN GO HIJAU: TEKAN WARNA TARGET.','HARD+: TULISAN GO MERAH = JANGAN TEKAN.','EXPERT: CERMIN = POSISI LAWAN 180 DERAJAT.','ATAS KIRI/KANAN <> BAWAH KANAN/KIRI.','ATAS TENGAH <> BAWAH TENGAH.','MASTER: TOMBOL SEBELAH SATU BARIS.']},
-    {name:'LIGHT MAZE',mode:'maze',pose:'graze',guide:['ATAS: TOMBOL TENGAH ATAS.','KANAN: TOMBOL KANAN ATAS.','BAWAH: TENGAH BAWAH. KIRI: KIRI ATAS.','P PORTAL. * BONUS. G GOAL.','MASTER: PETA BESAR DAN BONUS WAJIB.']},
+    {name:'LIGHT MAZE',mode:'maze',pose:'graze',guide:['ATAS: TOMBOL TENGAH ATAS.','KANAN: TOMBOL KANAN ATAS.','BAWAH: TENGAH BAWAH. KIRI: KIRI ATAS.','P PORTAL. * BONUS. G GOAL.','K KUNCI MEMBUKA GERBANG X.','MISI PANEN: AMBIL SEMUA SUSU.','HARD+: KANAN BAWAH SCAN TERBATAS.','MASTER: PETA BESAR DAN BONUS WAJIB.']},
     {name:'WHACK-A-LIGHT',mode:'whack',pose:'jump',guide:['HIJAU TAP. MERAH JANGAN TAP.','BIRU DOUBLE TAP. KUNING HOLD.','UNGU: TOMBOL SEBELAH SATU BARIS.','HARD+: BEBERAPA ISYARAT SEKALIGUS.']},
     {name:'HOT POTATO',mode:'potato',pose:'run',guide:['TUNGGU SINYAL DI NODE TARGET.','TEKAN HANYA SAAT WARNA HIJAU.','HARD+: PUTAR BALIK DI TENGAH.','EXPERT+: TARGET MERAH ITU JEBAKAN.']},
     {name:'DIRECTION SHIFT',mode:'direction',pose:'roll',guide:['COCOKKAN PANAH DENGAN KARTU ARAH.','BLOK WARNA MENUNJUKKAN TOMBOL.','IKUTI ROTASI DAN CERMIN POSISI.','HARD+: INGAT MAPPING ARAH.','MASTER: RANGKAIAN PANAH.']},
     {name:'MISSING KEY',mode:'missing',pose:'peek',guide:['INGAT POLA PERTAMA.','PUTARAN KEDUA ADA LAMPU HILANG.','TEBAK SESUAI URUTAN CELAHNYA.','HARD+: 2 CELAH. MASTER: REVERSE.']},
     {name:'SIGNAL DECODER',mode:'decoder',pose:'listen',guide:['EASY/NORMAL 4 BIT. HARD+ 5-7 BIT.','UBAH BINER MENJADI ANGKA DESIMAL.','ATAS KIRI/KANAN: PINDAH DIGIT.','TENGAH ATAS TAMBAH, BAWAH KURANG.','BAWAH KIRI HAPUS. KANAN OK.','EXPERT INVERT. MASTER LSB DULU.']},
-    {name:'SNAKE',mode:'snake',pose:'graze',guide:['GIRING ULAR SAPI MENCARI RUMPUT.','ATAS TENGAH NAIK, BAWAH TENGAH TURUN.','BAWAH KIRI/KANAN: KIRI/KANAN.','EASY-HARD: TEMBUS SISI LAYAR.','EXPERT/MASTER: DINDING MEMATIKAN.','HINDARI BATU DAN TUBUH SENDIRI.','MAKAN RUMPUT UNTUK NAIK LEVEL.']},
-    {name:'PONG',mode:'pong',pose:'expert',guide:['PANTULKAN BOLA SUSU KE LAWAN.','ATAS KIRI/KANAN: GESER PAPAN.','BOLA MAKIN CEPAT SELAMA RALLY.','ARAHKAN PANTULAN DARI TEPI PAPAN.','JANGAN BIARKAN BOLA JATUH.']}
+    {name:'SNAKE',mode:'snake',pose:'graze',guide:['GIRING ULAR SAPI MENCARI RUMPUT.','ATAS TENGAH NAIK, BAWAH TENGAH TURUN.','BAWAH KIRI/KANAN: KIRI/KANAN.','EASY-HARD: TEMBUS SISI LAYAR.','EXPERT/MASTER: DINDING MEMATIKAN.','HINDARI BATU DAN TUBUH SENDIRI.','SUSU EMAS: BONUS 90 SEBELUM HABIS.','MAKAN RUMPUT UNTUK NAIK LEVEL.']},
+    {name:'PONG',mode:'pong',pose:'expert',guide:['PANTULKAN BOLA SUSU KE LAWAN.','ATAS KIRI/KANAN: GESER PAPAN.','BOLA MAKIN CEPAT SELAMA RALLY.','ARAHKAN PANTULAN DARI TEPI PAPAN.','TEMBAK TARGET SUSU: BONUS PAPAN.','PAPAN MELEBAR 5 DETIK, TAK BERTUMPUK.','JANGAN BIARKAN BOLA JATUH.']}
   ];
   const K=['#c49bef','#75d9e8','#ffd76b','#ff797d','#79acfa','#8bdcad'];
   const keyNames=['UNGU','CYAN','KUNING','MERAH','BIRU','HIJAU'];
@@ -157,23 +157,41 @@
         if(next==null){stack.pop();continue;}links[cell].push(next);links[next].push(cell);parent[next]=cell;depth[next]=depth[cell]+1;seen.add(next);stack.push(next);
       }
       const goal=depth.indexOf(Math.max(...depth)),path=[];for(let n=goal;n!==-1;n=parent[n])path.unshift(n);
-      const portal=difficulty()>=1?{from:path[Math.floor(path.length/3)],to:path[Math.floor(path.length*2/3)]}:null;
-      const optimum=path.length-1-(portal?path.indexOf(portal.to)-path.indexOf(portal.from):0);
-      const bonusCount=master?Math.min(4,2+extraStage()):1;
-      const bonuses=master?[...Array.from({length:bonusCount-1},(_,i)=>path[Math.max(1,Math.floor(path.length/3*(i+1)/bonusCount))]),path.at(-2)]:[path.at(-2)];
-      s.game={cols,rows,links,path,current:start,start,goal,portal,bonus:path.at(-2),bonuses,collectedBonuses:[],bonusTaken:false,moves:0,moveLimit:optimum+Math.max(0,[24,18,12,8,3][difficulty()]-extraStage()),visited:[start],portalUsed:false,mapVisible:true,bumped:false,stepWindow:hard()?Math.max(master?450:700,Math.round([0,0,2600,1900,1000][difficulty()]*pace())):0};
+      const portalIndex=difficulty()>=1?Math.floor(path.length/3):Math.floor(path.length/2);
+      const portal=difficulty()>=1?{from:path[portalIndex],to:path[Math.floor(path.length*2/3)]}:null;
+      const mission=s.level%3;let key=-1,gate=-1,keyDetour=0;
+      if(mission===1){
+        const choices=[];
+        for(let i=1;i<portalIndex;i++)for(const branch of links[path[i]])if(!path.includes(branch)){
+          choices.push([branch,2]);for(const leaf of links[branch])if(!path.includes(leaf)&&leaf!==path[i])choices.push([leaf,4]);
+        }
+        if(choices.length)[key,keyDetour]=choices[r(choices.length)];else key=path[Math.max(1,Math.floor(portalIndex/2))];
+        gate=path.at(-2);
+      }
+      const reachable=path.filter((n,i)=>i>0&&i<path.length-1&&(!portal||i<portalIndex||i>=Math.floor(path.length*2/3))&&n!==key&&n!==gate);
+      const count=Math.min(reachable.length,Math.max(master?Math.min(4,2+extraStage()):1,mission===2?3:1));
+      const bonuses=Array.from({length:count},(_,i)=>reachable[Math.floor((i+1)*reachable.length/count)-1]);
+      const optimum=path.length-1-(portal?path.indexOf(portal.to)-portalIndex:0)+keyDetour;
+      s.game={cols,rows,links,path,current:start,start,goal,portal,mission,key,gate,keyTaken:false,scanCharges:hard()?(master?1:2):0,scanActive:false,bonus:bonuses.at(-1),bonuses,collectedBonuses:[],bonusTaken:false,moves:0,moveLimit:optimum+Math.max(0,[24,18,12,8,3][difficulty()]-extraStage()),visited:[start],portalUsed:false,mapVisible:true,bumped:false,stepWindow:hard()?Math.max(master?450:700,Math.round([0,0,2600,1900,1000][difficulty()]*pace())):0};
       if(!hard()){s.view='mazeInput';draw();return;}
       s.view='mazePreview';draw();host.later(()=>{s.game.mapVisible=false;s.view='mazeInput';deadline(s.game.stepWindow);draw();},[0,0,8000,6500,4000][difficulty()]);
     }
     function mazePress(n){
-      const g=s.game,target=mazeTarget(n);if(target==null)return;
+      const g=s.game;
+      if(n===6){
+        if(g.scanCharges>0&&!g.scanActive){g.scanCharges--;g.scanActive=true;g.mapVisible=true;sfx('portal');deadline(g.stepWindow+1400);draw();host.later(()=>{if(s.view==='mazeInput'){g.mapVisible=false;g.scanActive=false;draw();}},1400);}
+        return;
+      }
+      const target=mazeTarget(n);if(target==null)return;
       if(target<0||!mazeOpen(g.current,target)){g.bumped=true;if(hard())fail('MENABRAK DINDING');else draw();return;}
-      g.bumped=false;g.current=target;g.moves++;sfx('step');
+      if(g.gate>=0&&target===g.gate&&!g.keyTaken){g.hint='CARI KUNCI K DAHULU';sfx('warning');draw();return;}
+      g.hint='';g.bumped=false;g.current=target;g.moves++;sfx('step');
       if(hard()&&g.moves>g.moveLimit){fail('TERLALU BANYAK LANGKAH');return;}
       if(!g.visited.includes(target)){g.visited.push(target);points(10);}
+      if(target===g.key&&!g.keyTaken){g.keyTaken=true;points(35);sfx('bonus');}
       if(g.portal&&target===g.portal.from&&!g.portalUsed){g.current=g.portal.to;points(15);g.portalUsed=true;sfx('portal');if(!g.visited.includes(g.current))g.visited.push(g.current);}
-      if(g.bonuses.includes(g.current)&&!g.collectedBonuses.includes(g.current)){g.collectedBonuses.push(g.current);g.bonusTaken=g.collectedBonuses.length===g.bonuses.length;points(40);sfx('bonus');}
-      if(g.current===g.goal){if(hard()&&!g.bonusTaken){fail('BONUS BELUM DIAMBIL');return;}clear();}
+      if(g.bonuses.includes(g.current)&&!g.collectedBonuses.includes(g.current)){g.collectedBonuses.push(g.current);g.bonusTaken=g.collectedBonuses.length===g.bonuses.length;points(g.mission===2?25+15*g.collectedBonuses.length:40);sfx('bonus');}
+      if(g.current===g.goal){if((hard()||g.mission===2)&&!g.bonusTaken){if(hard()){fail('BONUS BELUM DIAMBIL');return;}g.hint='MASIH ADA SUSU';deadline(g.stepWindow);draw();return;}clear();}
       else {deadline(g.stepWindow);draw();}
     }
     function neighbor(n,dir){const col=(n-1)%3;return n+(col+dir<0||col+dir>2?-dir:dir);}
@@ -318,13 +336,13 @@
     function snakeFood(){
       const g=s.game,free=[];
       for(let cell=0;cell<g.cols*g.rows;cell++)if(!g.body.includes(cell)&&!g.rocks.includes(cell))free.push(cell);
-      g.food=free[r(free.length)];
+      g.food=free[r(free.length)];g.goldenFood=(s.level+g.eaten)%4===3;g.foodExpires=(g.clock||0)+6500;
     }
     function snake(){
       const cols=26,rows=13,head=6*cols+5,body=[head,head-1,head-2],rocks=[];
       const choices=shuffle(Array.from({length:cols*rows},(_,n)=>n).filter(n=>n%cols>10&&n%cols<cols-2&&Math.floor(n/cols)>1&&Math.floor(n/cols)<rows-2));
       rocks.push(...choices.slice(0,hard()?Math.min(24,4+difficulty()*2+stage()):0));
-      s.game={cols,rows,body,rocks,dir:3,nextDir:3,eaten:0,goal:3+Math.floor(difficulty()/2),tickMs:Math.max(90,Math.round([270,225,185,155,130][difficulty()]*pace()))};
+      s.game={cols,rows,body,rocks,clock:0,dir:3,nextDir:3,eaten:0,goal:3+Math.floor(difficulty()/2),tickMs:Math.max(90,Math.round([270,225,185,155,130][difficulty()]*pace()))};
       snakeFood();s.view='snakeInput';draw();host.later(snakeTick,s.game.tickMs);
     }
     function snakePress(n){
@@ -332,12 +350,12 @@
       if(({1:3,3:1,2:5,5:2})[g.dir]!==n)g.nextDir=n;
     }
     function snakeTick(){
-      if(s.view!=='snakeInput')return;const g=s.game,head=g.body[0],dx={1:-1,3:1}[g.nextDir]||0,dy={2:-1,5:1}[g.nextDir]||0;let x=head%g.cols+dx,y=Math.floor(head/g.cols)+dy;
+      if(s.view!=='snakeInput')return;const g=s.game;g.clock+=g.tickMs;if(g.goldenFood&&g.clock>=g.foodExpires)g.goldenFood=false;const head=g.body[0],dx={1:-1,3:1}[g.nextDir]||0,dy={2:-1,5:1}[g.nextDir]||0;let x=head%g.cols+dx,y=Math.floor(head/g.cols)+dy;
       if(difficulty()<3){x=(x+g.cols)%g.cols;y=(y+g.rows)%g.rows;}
       const next=y*g.cols+x,eating=next===g.food;
       if(x<0||x>=g.cols||y<0||y>=g.rows||g.rocks.includes(next)||g.body.slice(0,eating?undefined:-1).includes(next)){fail('ULAR SAPI MENABRAK');return;}
       g.dir=g.nextDir;g.body.unshift(next);
-      if(eating){g.eaten++;points(35);sfx('food');if(g.eaten>=g.goal){clear();return;}snakeFood();}
+      if(eating){const gold=g.goldenFood;g.eaten++;points(gold?90:35);sfx(gold?'bonus':'food');if(g.eaten>=g.goal){clear();return;}snakeFood();}
       else g.body.pop();draw();host.later(snakeTick,g.tickMs);
     }
     function pongBall(){
@@ -346,10 +364,10 @@
       g.aiTarget=160;g.aiError=(rand()-.5)*g.aiErrorRange;
     }
     function pong(){
-      s.game={playerX:160,aiX:160,held:{},width:[52,46,40,34,28][difficulty()],aiWidth:[48,50,52,54,56][difficulty()],hits:0,goal:Math.min(12,[3,4,5,6,7][difficulty()]+burden()),lives:[3,3,2,2,1][difficulty()],tick:0,
+      s.game={clock:0,milkTargetX:60+r(3)*100,milkReadyAt:0,paddleBoostUntil:0,playerX:160,aiX:160,held:{},width:[52,46,40,34,28][difficulty()],aiWidth:[48,50,52,54,56][difficulty()],hits:0,goal:Math.min(12,[3,4,5,6,7][difficulty()]+burden()),lives:[3,3,2,2,1][difficulty()],tick:0,
         baseSpeed:[4,4.8,5.7,6.6,7.5][difficulty()]/pace(),maxSpeed:Math.min(17,[7.6,8.6,9.6,10.6,11.8][difficulty()]/pace()),
         aiSpeed:Math.min(9,[3.3,4,4.8,5.7,6.6][difficulty()]/pace()),aiReaction:[10,8,6,4,3][difficulty()],aiErrorRange:[46,34,22,14,6][difficulty()]};
-      pongBall();s.view='pongInput';draw();host.later(pongTick,40);
+      s.game.baseWidth=s.game.width;pongBall();s.view='pongInput';draw();host.later(pongTick,40);
     }
     function pongBounce(opponent){
       const g=s.game,b=g.ball,offset=(b.x-(opponent?g.aiX:g.playerX))/((opponent?g.aiWidth:g.width)/2);
@@ -361,7 +379,7 @@
     }
     function pongPress(n){const g=s.game;if(n===1||n===3)g.playerX=Math.max(18+g.width/2,Math.min(302-g.width/2,g.playerX+(n===1?-14:14)));draw();}
     function pongTick(){
-      if(s.view!=='pongInput')return;const g=s.game,b=g.ball;g.tick++;
+      if(s.view!=='pongInput')return;const g=s.game,b=g.ball;g.tick++;g.clock+=40;g.width=g.baseWidth+(g.clock<g.paddleBoostUntil?8:0);
       g.playerX=Math.max(18+g.width/2,Math.min(302-g.width/2,g.playerX+((g.held[3]?1:0)-(g.held[1]?1:0))*8));
       if(g.tick%g.aiReaction===1||g.tick===1){
         if(b.vy<0){const impact=b.x+b.vx*Math.max(0,(b.y-51)/-b.vy),fold=((impact-22)%552+552)%552;g.aiTarget=22+(fold<=276?fold:552-fold)+g.aiError;}
@@ -373,6 +391,9 @@
       for(let i=0;i<steps;i++){
         const oldY=b.y;b.x+=b.vx/steps;b.y+=b.vy/steps;
         if(b.x<22||b.x>298){b.x=b.x<22?44-b.x:596-b.x;b.vx*=-1;sfx('bounce');}
+        if(b.vy<0&&oldY>=101&&b.y<=101&&g.clock>=g.milkReadyAt&&Math.abs(b.x-g.milkTargetX)<=12){
+          points(20);sfx('bonus');g.paddleBoostUntil=g.clock+5000;g.milkReadyAt=g.clock+3500;g.milkTargetX=60+100*((Math.round((g.milkTargetX-60)/100)+1+r(2))%3);
+        }
         if(b.vy<0&&oldY>=51&&b.y<=51&&Math.abs(b.x-g.aiX)<aiHalf+3){b.y=102-b.y;pongBounce(true);}
         if(b.vy>0&&oldY<=150&&b.y>=150&&Math.abs(b.x-g.playerX)<g.width/2+3){b.y=300-b.y;pongBounce(false);}
       }
@@ -403,7 +424,10 @@
       else if(['input','missingInput'].includes(v))return palette.slice();
       else if(v==='decoderInput')return palette.slice();
       else if(v==='reactionGo'||v==='reactionFake')out[s.target-1]=v==='reactionGo'?palette[s.target-1]:colors.blocked;
-      else if(v==='mazePreview'||v==='mazeInput')for(const n of [1,2,3,5]){const target=mazeTarget(n);out[n-1]=target<0||!mazeOpen(g.current,target)?colors.blocked:g.portal&&!g.portalUsed&&target===g.portal.from?colors.portal:g.bonuses.includes(target)&&!g.collectedBonuses.includes(target)?colors.bonus:palette[n-1];}
+      else if(v==='mazePreview'||v==='mazeInput'){
+        for(const n of [1,2,3,5]){const target=mazeTarget(n);out[n-1]=target<0||!mazeOpen(g.current,target)||(g.gate>=0&&target===g.gate&&!g.keyTaken)?colors.blocked:target===g.key&&!g.keyTaken?colors.bonus:g.portal&&!g.portalUsed&&target===g.portal.from?colors.portal:g.bonuses.includes(target)&&!g.collectedBonuses.includes(target)?colors.bonus:palette[n-1];}
+        if(v==='mazeInput'&&g.scanCharges>0&&!g.scanActive)out[5]=colors.safe;
+      }
       else if(v==='whackInput'){for(const cue of g.cues)if(!cue.done)out[cue.key-1]={tap:colors.safe,avoid:colors.blocked,double:colors.portal,hold:colors.bonus,neighbor:colors.purple}[cue.type];}
       else if(v==='potatoInput')out[g.signal-1]=g.green?colors.safe:colors.blocked;
       else if(v==='directionPreview'||v==='directionInput')for(const n of baseDirections)out[n-1]=palette[n-1];

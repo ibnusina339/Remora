@@ -31,8 +31,12 @@ Perbaikan menolak 11 kondisi baseline yang sebelumnya lolos atau masih menampilk
 
 ## Batas pengujian
 
-Tidak ada papan ESP32-C6 terdeteksi pada port komputer; semua port yang tersedia adalah serial Bluetooth. Karena itu penulisan flash nyata, gangguan daya, kualitas Wi-Fi, reboot ke image baru, rollback bootloader dan retensi profil nyata **belum diuji pada perangkat**. Simulator browser juga tidak melakukan flash OTA.
+Pada pengujian 26 Oktober 2026, tidak ada papan ESP32-C6 terdeteksi pada port komputer; semua port yang tersedia adalah serial Bluetooth. Karena itu penulisan flash nyata, gangguan daya, kualitas Wi-Fi, reboot ke image baru, rollback bootloader dan retensi profil nyata **belum diuji pada perangkat**. Simulator browser juga tidak melakukan flash OTA.
 
 Partisi aplikasi dan userdata tetap terpisah; peta partisi tidak diubah pada v0.3.0. Mock flash hanya menerima target slot aplikasi nonaktif. Pemeriksaan ini tidak menggantikan pengujian backup/restore dan persistensi pada hardware.
 
 Setelah perangkat tersedia: isi baterai minimal 30%, gunakan firmware versi lama dengan peta partisi yang sama, simpan profil/rekor contoh, sambungkan Wi-Fi lalu jalankan Settings > Network > OTA Update. Pastikan versi baru aktif setelah restart dan profil/rekor masih ada. Uji gangguan unduhan secara terpisah. Jangan gunakan erase-flash untuk pengujian retensi data.
+
+## Pengujian perangkat 27 Oktober 2026
+
+ESP32-C6 COM13 sudah diuji. Core dan renderer tanpa LCD lulus, tetapi Wi-Fi sekolah memakai captive portal sehingga HTTPS ke GitHub belum tersedia bagi ESP32. Tidak ada instalasi OTA fisik yang selesai. Flash awal dipulihkan dan dibaca ulang identik. Rincian dan batas pengujian ada di [laporan perangkat](HARDWARE_TEST_2026-10-27.md).

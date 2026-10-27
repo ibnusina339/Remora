@@ -17,7 +17,7 @@ out+='struct Glyph {char c;uint8_t w;uint8_t rows[7];};\ninline constexpr Glyph 
 for(const [ch,shape]of Object.entries(u.font))if(ch.length===1&&ch.charCodeAt(0)<127){const rows=shape.split('/');out+='{'+JSON.stringify(ch)+'.0'+','+rows[0].length+',{'+rows.map(row=>parseInt(row,2)).join(',')+'}},\n';}
 // Character literal generation avoids quote/backslash ambiguities.
 out=out.replace(/\{"((?:\\.|[^"\\])*)"\.0,/g,(m,c)=>'{'+String(JSON.parse('"'+c+'"').charCodeAt(0))+',');
-out+='};\ninline constexpr const char* Guides[11][7]={\n';for(const g of a.catalog)out+='{'+g.guide.map(JSON.stringify).join(',')+'},\n';out+='};\n}\n';fs.writeFileSync(path.join(assetDir,'pixel_assets.hpp'),out);
+out+='};\ninline constexpr const char* Guides[11][9]={\n';for(const g of a.catalog)out+='{'+g.guide.map(JSON.stringify).join(',')+'},\n';out+='};\n}\n';fs.writeFileSync(path.join(assetDir,'pixel_assets.hpp'),out);
 const audioDir=path.join(root,'firmware/esp32c6/components/remora_board/include');fs.mkdirSync(audioDir,{recursive:true});
 out='#pragma once\n#include <cstdint>\nnamespace remora {\n';const lengths=[];
 for(let i=0;i<meows.length;i++){const m=meows[i],pcm=Buffer.from(m.pcm16,'base64'),n=Math.floor(pcm.length/2*8000/m.sampleRate),values=[];for(let j=0;j<n;j++){const p=Math.min(pcm.length/2-1,Math.floor(j*m.sampleRate/8000));values.push(Math.max(0,Math.min(255,128+Math.round(pcm.readInt16LE(p*2)/256))));}lengths.push(n);out+=`inline constexpr uint8_t Meow${i}[]={${values.join(',')}};\n`;}

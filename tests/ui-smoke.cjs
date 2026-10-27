@@ -12,3 +12,4 @@ require('./ratings-smoke.cjs');
 require('./polish-reminders-smoke.cjs');
 
 require('./auto-off-smoke.cjs');
+require('./game-variety-smoke.cjs');

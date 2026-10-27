@@ -414,15 +414,18 @@
           g.rocks.forEach(n=>{const x=30+n%g.cols*10,y=42+Math.floor(n/g.cols)*10;rect(x+1,y+1,8,8,P.dim);rect(x+3,y,3,2,P.paper);});
           g.body.slice(1).forEach((n,i)=>{const x=30+n%g.cols*10,y=42+Math.floor(n/g.cols)*10;snakePatch(x,y,10,i);});
           snakeHead(29+g.body[0]%g.cols*10,41+Math.floor(g.body[0]/g.cols)*10);
-          const x=35+g.food%g.cols*10,y=43+Math.floor(g.food/g.cols)*10;line(x,y+7,x-3,y+2,P.green);line(x,y+7,x,y,P.green);line(x,y+7,x+3,y+2,P.green);
-          gameStatus();footer([null,'UP',null,'LEFT','DOWN','RIGHT'],gameKeys);
+          const x=35+g.food%g.cols*10,y=43+Math.floor(g.food/g.cols)*10;
+          if(g.goldenFood){rect(x-3,y+2,7,7,P.yellow);rect(x-1,y,3,3,P.paper);rect(x-1,y+4,3,3,P.bg);}
+          else{line(x,y+7,x-3,y+2,P.green);line(x,y+7,x,y,P.green);line(x,y+7,x+3,y+2,P.green);}
+          gameStatus(g.goldenFood?'SUSU EMAS +90 / '+Math.ceil((g.foodExpires-g.clock)/1000)+'s':'RUMPUT +35 / SUSU EMAS +90');footer([null,'UP',null,'LEFT','DOWN','RIGHT'],gameKeys);
         }else{
           smallText('POIN '+g.hits+'/'+g.goal,17,28,P.paper);smallText('NYAWA '+g.lives,303,28,P.paper,'right');frame(16,38,288,132,P.line);
           for(let x=22;x<298;x+=12)rect(x,101,5,1,P.line);
+          if(g.clock>=g.milkReadyAt){frame(g.milkTargetX-7,94,15,15,P.yellow,2);rect(g.milkTargetX-1,98,3,7,P.paper);}
           rect(g.aiX-(g.aiWidth||48)/2,42,g.aiWidth||48,6,P.paper);
           rect(g.playerX-g.width/2,153,g.width,7,P.paper);
           rect(g.ball.x-3,g.ball.y-3,6,6,P.paper);rect(g.ball.x-1,g.ball.y-2,2,2,P.black);miniCow(24,126);
-          gameStatus();footer(['LEFT',null,'RIGHT'],gameKeys);
+          gameStatus(g.clock<g.paddleBoostUntil?'PADDLE +8 / '+Math.ceil((g.paddleBoostUntil-g.clock)/1000)+'s':'BIDIK SUSU SAAT BALAS BOLA');footer(['LEFT',null,'RIGHT'],gameKeys);
         }
         return;
       }
@@ -435,29 +438,27 @@
         smallText((g.hits||0)+' / '+(g.required||1)+' GO',160,166,P.paper,'center');gameStatus();return;
       }
       if(s.mode==='maze'){
-        const master=difficulty===4;
-        text(v==='mazePreview'?'INGAT PETA':'CARI GOAL',160,master?33:40,master?1:2,P.amber,'center');
-        const cellW=Math.floor(276/g.cols),cellH=Math.floor((master?120:106)/g.rows),left=Math.floor((320-g.cols*cellW)/2),top=master?44:58;
-        if(v==='mazeInput')nav=['LEFT','UP','RIGHT',null,'DOWN',null];
+        const mission=g.mission===1?'CARI KUNCI / BUKA GERBANG':g.mission===2?'PANEN SEMUA SUSU':'TEMUKAN GOAL';
+        smallText(v==='mazePreview'?'INGAT PETA / '+mission:mission,160,32,P.amber,'center');
+        const cellW=Math.floor(276/g.cols),cellH=Math.floor(114/g.rows),left=Math.floor((320-g.cols*cellW)/2),top=45;
         const known=n=>g.mapVisible||g.visited.includes(n)||n===g.current||g.links[g.current].includes(n);
         for(let n=0;n<g.cols*g.rows;n++){
           const x=left+n%g.cols*cellW,y=top+Math.floor(n/g.cols)*cellH,visible=known(n),visited=g.visited.includes(n);
           rect(x+1,y+1,cellW-1,cellH-1,visited?P.panel:visible?P.bg:P.black);
           if(!visible){rect(x+Math.floor(cellW/2),y+Math.floor(cellH/2),1,1,P.line);continue;}
-          const wall=P.paper;
-          if(!g.links[n].includes(n-g.cols))line(x,y,x+cellW,y,wall);
-          if(n%g.cols===g.cols-1||!g.links[n].includes(n+1))line(x+cellW,y,x+cellW,y+cellH,wall);
-          if(!g.links[n].includes(n+g.cols))line(x,y+cellH,x+cellW,y+cellH,wall);
-          if(n%g.cols===0||!g.links[n].includes(n-1))line(x,y,x,y+cellH,wall);
-          const label=n===g.goal?'G':g.portal&&!g.portalUsed&&(n===g.portal.from||n===g.portal.to)?'P':g.bonuses.includes(n)&&!g.collectedBonuses.includes(n)?'*':n===g.start?'S':'';
-          if(label)text(label,x+Math.floor(cellW/2),y+Math.floor((cellH-7)/2),1,label==='P'?P.blue:label==='*'?P.yellow:P.green,'center');
+          if(!g.links[n].includes(n-g.cols))line(x,y,x+cellW,y,P.paper);
+          if(n%g.cols===g.cols-1||!g.links[n].includes(n+1))line(x+cellW,y,x+cellW,y+cellH,P.paper);
+          if(!g.links[n].includes(n+g.cols))line(x,y+cellH,x+cellW,y+cellH,P.paper);
+          if(n%g.cols===0||!g.links[n].includes(n-1))line(x,y,x,y+cellH,P.paper);
+          const label=n===g.key&&!g.keyTaken?'K':n===g.gate&&!g.keyTaken?'X':n===g.goal?'G':g.portal&&!g.portalUsed&&(n===g.portal.from||n===g.portal.to)?'P':g.bonuses.includes(n)&&!g.collectedBonuses.includes(n)?'*':n===g.start?'S':'';
+          if(label)text(label,x+Math.floor(cellW/2),y+Math.floor((cellH-7)/2),1,label==='X'?P.red:label==='P'?P.blue:['*','K'].includes(label)?P.yellow:P.green,'center');
         }
         const px=left+g.current%g.cols*cellW,py=top+Math.floor(g.current/g.cols)*cellH;
         rect(px+3,py+3,cellW-5,cellH-5,P.amber);rect(px+Math.floor(cellW/2)-1,py+Math.floor(cellH/2)-1,3,3,P.black);
-        smallText(g.cols+' X '+g.rows+' / '+(g.mapVisible?'MAP':'FOG'),160,168,P.dim,'center');
-        gameStatus(g.bumped?'DINDING! COBA ARAH LAIN':'S START / G GOAL / P PORTAL / * BONUS');
-        if(difficulty>=2)smallText('BONUS '+g.collectedBonuses.length+'/'+g.bonuses.length+' / MOVES '+g.moves+'/'+g.moveLimit,160,208,P.dim,'center');
-        rect(0,220,320,20,P.bg);for(const [i,x,label]of [[0,10,'LEFT'],[1,85,'UP'],[2,157,'RIGHT'],[4,246,'DOWN']]){const c=s.gameLEDs?.[i]&&s.gameLEDs[i]!=='transparent'?s.gameLEDs[i]:gameKeys[i];rect(x,223,10,10,c);smallText(label,x+14,224,c);}
+        const keyInfo=g.key>=0?(g.keyTaken?'K OK / ':'K BELUM / '):'';
+        smallText(g.hint||(g.bumped?'DINDING! COBA ARAH LAIN':keyInfo+'SUSU '+g.collectedBonuses.length+'/'+g.bonuses.length+(difficulty>=2?' / SISA '+Math.max(0,g.moveLimit-g.moves):'')),160,164,g.hint?P.yellow:P.dim,'center');
+        gameStatus();
+        footer(['LEFT','UP','RIGHT',null,'DOWN',g.scanActive?'SCAN...':v==='mazeInput'&&g.scanCharges>0?'SCAN '+g.scanCharges:null],gameKeys);
         return;
       }
       if(s.mode==='whack'){

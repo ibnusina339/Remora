@@ -22,11 +22,13 @@ struct GameState {
  bool mirror=false,fakeUsed=false,green=false,reversed=false,gap=false,invert=false,lsb=false;
  std::vector<int> times,chain,answers,gaps,order,recent;std::array<int,4>mapping{};
  int64_t now=0,deadline=0,window=0,reactionStart=0,answerWindow=0;int elapsed=0;
+ int mazeMission=0,mazeKey=-1,mazeGate=-1,scanCharges=0;bool mazeKeyTaken=false,scanActive=false;int64_t scanUntil=0;
  int cols=0,rows=0,current=0,start=0,goal=0,portalFrom=-1,portalTo=-1,moves=0,moveLimit=0,stepWindow=0;
  bool mapVisible=true,portalUsed=false;std::vector<std::vector<int>>links;std::vector<int>path,visited,bonuses,collected;
  std::vector<Cue>cues;int bitCount=4,bit=-1,digitIndex=2,signalKey=2;std::array<int,3>digits{};
  std::vector<int>body,rocks;int food=0,nextDir=3,eaten=0,tickMs=200;
  float playerX=160,aiX=160,width=46,aiWidth=50,bx=160,by=82,vx=0,vy=0,baseSpeed=0,maxSpeed=0,aiSpeed=0,aiError=0,aiErrorRange=0,aiTarget=160;
+ bool goldenFood=false;int64_t foodExpires=0,paddleBoostUntil=0,milkReadyAt=0;float baseWidth=0,milkTargetX=160;
  int lives=3,tick=0,rally=0,aiReaction=8;std::array<bool,7>held{};
 };
 class GameEngine {

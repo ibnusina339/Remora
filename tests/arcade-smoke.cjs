@@ -21,7 +21,7 @@ function solve(app){
     assert.notEqual(s.view,'gameover',s.mode+': '+s.failureReason);
     if(s.view==='input'){
       let n=s.mode==='reverse'?s.sequence[s.sequence.length-1-s.inputIndex]:s.sequence[s.inputIndex];if(s.game.mirror)n=7-n;e.press(n);
-    }else if(s.view==='mazeInput'){const next=s.game.path[s.game.path.indexOf(s.game.current)+1],offset=next-s.game.current;e.press(offset===-s.game.cols?2:offset===s.game.cols?5:offset===1?3:1);}
+    }else if(s.view==='mazeInput'){e.press(require('./maze-solver.cjs')(s.game,s.difficulty>=2));}
     else if(s.view==='whackInput'){
       const wave=s.game.wave,cues=s.game.cues;
       for(const c of cues)if(c.type==='hold')e.keyDown(c.target);
