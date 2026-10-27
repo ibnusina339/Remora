@@ -37,6 +37,7 @@ struct Response {
  bool headersOk=true,complete=true,connect=true;
 };
 inline std::map<std::string,Response> routes;
+inline std::function<void(const std::string&)> beforeHttpOpen;
 inline std::vector<std::function<void()>> tasks;
 inline esp_partition_t partition;
 inline esp_app_desc_t current;
@@ -101,6 +102,7 @@ inline MockHttp* esp_http_client_init(const esp_http_client_config_t* c) {
 }
 inline int esp_http_client_set_header(MockHttp* h,const char* k,const char* v) { h->headers[k]=v;return ESP_OK; }
 inline int esp_http_client_open(MockHttp* h,int) {
+ if(fixture::beforeHttpOpen)fixture::beforeHttpOpen(h->url);
  fixture::require(h->headers["User-Agent"]=="Remora-ESP32C6","missing firmware user agent");
  if(h->url.rfind("https://",0)!=0)++fixture::insecure;
  h->offset=0;h->count=0;

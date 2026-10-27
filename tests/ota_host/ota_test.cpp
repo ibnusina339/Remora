@@ -12,6 +12,9 @@
 using namespace fixture;
 static std::string releaseBody,manifestBody,imageBody,tag,manifestUrl,binaryUrl;
 static int passed=0,failed=0;
+static int jsonAllocations=0;
+static void* trackedJsonMalloc(size_t size){void*p=malloc(size);if(p)++jsonAllocations;return p;}
+static void trackedJsonFree(void*p){if(p)--jsonAllocations;free(p);}
 static std::string read(const std::string& path) {
  std::ifstream f(path,std::ios::binary);require(bool(f),"fixture file missing");
  return std::string(std::istreambuf_iterator<char>(f),{});
@@ -32,7 +35,7 @@ static std::string number(const std::string& body,const char* key,double value) 
 }
 static void reset() {
  require(clients==0,"leaked HTTP client from previous test");require(!flashActive,"leaked flash transaction");
- routes.clear();tasks.clear();written.clear();clients=begin=end=aborts=boot=restarts=reads=insecure=0;
+ beforeHttpOpen={};routes.clear();tasks.clear();written.clear();clients=begin=end=aborts=boot=restarts=reads=insecure=0;
  wifi=taskOk=initOk=partOk=beginOk=writeOk=endOk=bootOk=ntpOk=true;fixture::clock=1800000000;
  partition={};current={};strcpy(current.version,"0.1.0");strcpy(current.project_name,"Remora");
  remora::status={};remora::cancelled=false;remora::imageUrl.clear();remora::expectedHash.clear();remora::expectedSize=0;
@@ -66,6 +69,13 @@ int main(int argc,char** argv) {
  auto j=cJSON_Parse(releaseBody.c_str());require(j,"release JSON parse failed");tag=remora::str(j,"tag_name");cJSON_Delete(j);
  manifestUrl=std::string(remora::Prefix)+tag+"/manifest.json";binaryUrl=std::string(remora::Prefix)+tag+"/remora-esp32c6.bin";
  test("public release -> exact image -> inactive slot -> reboot",[]{check();install(true);});
+ test("release JSON freed before manifest TLS allocation",[]{
+  cJSON_Hooks hooks{trackedJsonMalloc,trackedJsonFree};cJSON_InitHooks(&hooks);
+  beforeHttpOpen=[](const std::string&url){if(url==manifestUrl)require(jsonAllocations==0,"GitHub JSON retained across manifest TLS allocation");};
+  try{check();require(jsonAllocations==0,"JSON allocation leak");}
+  catch(...){cJSON_InitHooks(nullptr);beforeHttpOpen={};throw;}
+  cJSON_InitHooks(nullptr);beforeHttpOpen={};
+ });
  test("17-byte reads split image header safely",[]{check();routes[binaryUrl].chunk=17;install(true);});
  test("GitHub HTTPS asset redirect",[]{check();auto& r=routes[binaryUrl];r.status=302;r.redirect="https://release-assets.githubusercontent.com/fixture.bin";routes[r.redirect].body=imageBody;install(true);});
  test("same semantic version is not offered",[]{strncpy(current.version,tag.c_str(),31);check(false);});
