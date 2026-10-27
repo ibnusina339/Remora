@@ -1,4 +1,4 @@
-// Bench-only entrypoint. No LCD, ADC, keys, audio, motor or power GPIO is driven.
+// Bench-only entrypoint. No LCD/ADC/keys/power GPIO. Audio GPIO is driven only by explicit AUDIO commands.
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -8,6 +8,7 @@
 #include "esp_ota_ops.h"
 #include "esp_app_desc.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
@@ -24,6 +25,35 @@
 #include <string>
 #include "core_bench.inc"
 using namespace remora;
+namespace remora {
+bool audioSamplingActive();
+bool networkRadioActive();
+bool networkIdleTick(int64_t,bool,bool);
+void otaInvalidateOffer();
+}
+static void audioTest(){
+ audioStart();audioVolumes(70,35,75);audioMenu(true);
+ auto begin=esp_timer_get_time()/1000;int active=0;
+ for(int i=0;i<120;i++){
+  if(i%20==0)audioMeow();
+  if(i%10==0)audioEffect(i%20?"correct":"fail");
+  if(audioSamplingActive())active++;
+  vTaskDelay(pdMS_TO_TICKS(100));
+ }
+ audioMenu(false);audioVolumes(70,0,0);vTaskDelay(pdMS_TO_TICKS(2000));
+ bool idle=!audioSamplingActive();audioStop();
+ printf("BENCH|AUDIO|%s|active_checks=%d/120|elapsed_ms=%lld|idle_clock_stopped=%d|gpio=16|speaker_connected=0\n",active==120&&idle?"PASS":"FAIL",active,(long long)(esp_timer_get_time()/1000-begin),idle);
+}
+static void idleTest(){
+ bool before=networkRadioActive();auto begin=esp_timer_get_time()/1000;int64_t stopped=-1;
+ while(esp_timer_get_time()/1000-begin<32000){
+  auto now=esp_timer_get_time()/1000;
+  if(networkIdleTick(now,false,otaStatus().busy)){otaInvalidateOffer();stopped=now-begin;}
+  vTaskDelay(pdMS_TO_TICKS(100));
+ }
+ bool off=!networkRadioActive();
+ printf("BENCH|WIFI_IDLE|%s|radio_before=%d|radio_after=%d|stopped_after_ms=%lld|connected=%d\n",before&&off&&stopped>=30000&&stopped<=31000?"PASS":"FAIL",before,!off,(long long)stopped,networkConnected());
+}
 static const char* Ssid="MAN Insan Cendekia Paser";
 static constexpr const char* Sentinel="REMORA-COM13-OTA-20261027";
 static void wifiEvent(void*,esp_event_base_t,int32_t id,void* data){
@@ -143,6 +173,10 @@ extern "C" void app_main(){
   else if(command.rfind("LOGIN ",0)==0)portalPage("/login",command.substr(6));
   else if(command=="LINK")linkInfo();
   else if(command=="FAST"){auto e=esp_wifi_set_ps(WIFI_PS_NONE);printf("BENCH|FAST|%s\n",esp_err_to_name(e));}
+  else if(command=="AUDIOTEST")audioTest();
+  else if(command=="AUDIOON"){audioStart();audioVolumes(70,35,75);audioMenu(true);printf("BENCH|AUDIOON|active=%d\n",audioSamplingActive());}
+  else if(command=="AUDIOOFF"){audioStop();printf("BENCH|AUDIOOFF|active=%d\n",audioSamplingActive());}
+  else if(command=="IDLETEST")idleTest();
   else if(command=="PROBE")probe();
   else if(command=="CHECK"){otaCheck();printf("BENCH|CHECK|START\n");}
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}

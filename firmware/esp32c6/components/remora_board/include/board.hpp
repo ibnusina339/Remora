@@ -37,3 +37,7 @@ struct OtaStatus {bool busy=false,available=false;int progress=0;std::string ver
 void otaCheck();void otaInstall();OtaStatus otaStatus();void otaCancel();
 extern lv_display_t* display;
 }
+
+namespace remora {
+void networkActivity();bool networkRadioActive();bool networkConnecting();void networkAutoStop();bool networkIdleTick(int64_t,bool,bool);void otaInvalidateOffer();bool audioSamplingActive();
+}
