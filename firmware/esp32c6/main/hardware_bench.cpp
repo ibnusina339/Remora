@@ -75,6 +75,24 @@ static void status(){
  }
  fflush(stdout);
 }
+static void radioConfig(){
+ wifi_config_t cfg{};wifi_country_t country{};
+ auto e=esp_wifi_get_config(WIFI_IF_STA,&cfg);esp_wifi_get_country(&country);
+ printf("BENCH|CONFIG|error=%s|scan=%d|sort=%d|rssi_min=%d|channel=%u|bssid_pinned=%d|retry=%u|country_channels=%u-%u\n",esp_err_to_name(e),int(cfg.sta.scan_method),int(cfg.sta.sort_method),int(cfg.sta.threshold.rssi),unsigned(cfg.sta.channel),cfg.sta.bssid_set,unsigned(cfg.sta.failure_retry_cnt),unsigned(country.schan),unsigned(country.schan+country.nchan-1));
+}
+static void rawSchoolScan(){
+ if(!networkRadioActive()||networkScanning()){printf("BENCH|RAW_SCAN|NEEDS_READY_RADIO\n");return;}
+ wifi_scan_config_t cfg{};cfg.show_hidden=true;
+ auto e=esp_wifi_scan_start(&cfg,true);
+ if(e!=ESP_OK){printf("BENCH|RAW_SCAN|error=%s\n",esp_err_to_name(e));return;}
+ uint16_t count=0;esp_wifi_scan_get_ap_num(&count);count=std::min<uint16_t>(count,24);std::vector<wifi_ap_record_t>aps(count);
+ e=esp_wifi_scan_get_ap_records(&count,aps.data());int found=0;
+ if(e==ESP_OK)for(auto&a:aps){std::string name(reinterpret_cast<char*>(a.ssid),strnlen(reinterpret_cast<char*>(a.ssid),32));if(name.find("MAN")!=name.npos||name.find("Paser")!=name.npos){
+  printf("BENCH|RAW_AP|ssid=%s|len=%u|rssi=%d|channel=%u|auth=%d|bssid=%02x:%02x:%02x:%02x:%02x:%02x|ssid_hex=",name.c_str(),unsigned(name.size()),int(a.rssi),unsigned(a.primary),int(a.authmode),a.bssid[0],a.bssid[1],a.bssid[2],a.bssid[3],a.bssid[4],a.bssid[5]);
+  for(unsigned char ch:name)printf("%02x",unsigned(ch));printf("\n");found++;
+ }}
+ printf("BENCH|RAW_SCAN|error=%s|aps=%u|school_aps=%d\n",esp_err_to_name(e),unsigned(count),found);
+}
 static void linkInfo(){
  wifi_ap_record_t ap{};int rssi=0;wifi_phy_mode_t phy{};wifi_bandwidth_t bw{};
  auto e=esp_wifi_sta_get_ap_info(&ap);if(e!=ESP_OK){printf("BENCH|LINK|connected=0|error=%s\n",esp_err_to_name(e));return;}
@@ -155,7 +173,7 @@ extern "C" void app_main(){
  std::string line;
  while(true){
   int c=getchar();
-  if(c==EOF){clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));continue;}
+  if(c==EOF){clearerr(stdin);if(networkIdleTick(esp_timer_get_time()/1000,true,otaStatus().busy))otaInvalidateOffer();vTaskDelay(pdMS_TO_TICKS(20));continue;}
   if(c=='\r')continue;
   if(c!='\n'){if(line.size()<4096)line+=char(c);continue;}
   auto command=line;line.clear();
@@ -171,6 +189,9 @@ extern "C" void app_main(){
   else if(command=="PORTAL")portalPage("/login");
   else if(command.rfind("PAGE /",0)==0)portalPage(command.substr(5));
   else if(command.rfind("LOGIN ",0)==0)portalPage("/login",command.substr(6));
+  else if(command=="CONFIG")radioConfig();
+  else if(command=="RAWSCAN")rawSchoolScan();
+  else if(command=="RADIOOFF"){networkAutoStop();otaInvalidateOffer();printf("BENCH|RADIOOFF|active=%d\n",networkRadioActive());}
   else if(command=="LINK")linkInfo();
   else if(command=="FAST"){auto e=esp_wifi_set_ps(WIFI_PS_NONE);printf("BENCH|FAST|%s\n",esp_err_to_name(e));}
   else if(command=="AUDIOTEST")audioTest();

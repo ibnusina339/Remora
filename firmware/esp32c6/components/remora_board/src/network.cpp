@@ -60,7 +60,22 @@ bool networkScanning(){return scanRunning;}
 std::vector<WifiNetwork>networkScanResults(){std::lock_guard<std::mutex>l(mutex);return scanResults;}
 std::string networkScanMessage(){std::lock_guard<std::mutex>l(mutex);return scanMessage;}
 std::string networkConnectionMessage(){std::lock_guard<std::mutex>l(mutex);if(connected)return "TERHUBUNG: "+ssid;if(connectionMessage=="MENGHUBUNGKAN..."&&esp_timer_get_time()/1000-connectingAt>20000)return "BELUM TERHUBUNG. COBA LAGI.";return connectionMessage;}
-void networkConnect(const std::string&name,const std::string&pass){requireRadioTask();if(name.empty()||name.size()>32||pass.size()>63||(!pass.empty()&&pass.size()<8))return;networkInit();networkStop();wifi_config_t cfg{};memcpy(cfg.sta.ssid,name.data(),name.size());memcpy(cfg.sta.password,pass.data(),pass.size());cfg.sta.threshold.authmode=pass.empty()?WIFI_AUTH_OPEN:WIFI_AUTH_WPA2_PSK;ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA,&cfg));ESP_ERROR_CHECK(esp_wifi_start());started=true;{std::lock_guard<std::mutex>l(mutex);connectionMessage="MENGHUBUNGKAN...";connectingAt=activityAt=esp_timer_get_time()/1000;connectingPending=true;}esp_wifi_set_ps(WIFI_PS_MIN_MODEM);ESP_ERROR_CHECK(esp_wifi_connect());{std::lock_guard<std::mutex>l(mutex);ssid=name;}nvs_handle_t n;if(nvs_open("wifi",NVS_READWRITE,&n)==ESP_OK){nvs_set_str(n,"ssid",name.c_str());nvs_set_str(n,"pass",pass.c_str());nvs_commit(n);nvs_close(n);}}
+void networkConnect(const std::string&name,const std::string&pass){
+ requireRadioTask();if(name.empty()||name.size()>32||pass.size()>63||(!pass.empty()&&pass.size()<8))return;
+ networkInit();networkStop();wifi_config_t cfg{};
+ memcpy(cfg.sta.ssid,name.data(),name.size());memcpy(cfg.sta.password,pass.data(),pass.size());
+ // C6 is 2.4 GHz only. Prefer the strongest compatible AP sharing the SSID,
+ // without pinning its channel/BSSID; one retry still permits AP fallback.
+ cfg.sta.scan_method=WIFI_ALL_CHANNEL_SCAN;cfg.sta.sort_method=WIFI_CONNECT_AP_BY_SIGNAL;
+ cfg.sta.channel=0;cfg.sta.bssid_set=false;cfg.sta.threshold.rssi=-127;cfg.sta.failure_retry_cnt=1;
+ cfg.sta.threshold.authmode=pass.empty()?WIFI_AUTH_OPEN:WIFI_AUTH_WPA2_PSK;
+ ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA,&cfg));
+ ESP_ERROR_CHECK(esp_wifi_start());started=true;
+ {std::lock_guard<std::mutex>l(mutex);connectionMessage="MENGHUBUNGKAN...";connectingAt=activityAt=esp_timer_get_time()/1000;connectingPending=true;}
+ esp_wifi_set_ps(WIFI_PS_MIN_MODEM);ESP_ERROR_CHECK(esp_wifi_connect());
+ {std::lock_guard<std::mutex>l(mutex);ssid=name;}
+ nvs_handle_t n;if(nvs_open("wifi",NVS_READWRITE,&n)==ESP_OK){nvs_set_str(n,"ssid",name.c_str());nvs_set_str(n,"pass",pass.c_str());nvs_commit(n);nvs_close(n);}
+}
 void networkConnectSaved(){nvs_handle_t n;if(nvs_open("wifi",NVS_READONLY,&n)!=ESP_OK)return;char name[33]{},pass[65]{};size_t a=sizeof(name),b=sizeof(pass);if(nvs_get_str(n,"ssid",name,&a)==ESP_OK){nvs_get_str(n,"pass",pass,&b);nvs_close(n);networkConnect(name,pass);memset(pass,0,sizeof(pass));return;}nvs_close(n);}
 static bool stopRadio(bool automatic,int64_t expectedActivity){
  requireRadioTask();bool wasStarted,wasScanning;
