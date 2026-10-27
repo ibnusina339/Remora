@@ -97,6 +97,11 @@ int main(int argc,char** argv) {
  test("prerelease tag never claims latest",[]{routes[remora::Api].body=edit(releaseBody,"tag_name","v99.0.0-rc.1");check(false);require(remora::otaStatus().message!="Latest firmware","prerelease incorrectly called latest");});
  test("17-byte reads split image header safely",[]{check();routes[binaryUrl].chunk=17;install(true);});
  test("GitHub HTTPS asset redirect",[]{check();auto& r=routes[binaryUrl];r.status=302;r.redirect="https://release-assets.githubusercontent.com/fixture.bin";routes[r.redirect].body=imageBody;install(true);});
+ test("long signed GitHub asset URL fits request buffer",[]{
+  auto&r=routes[manifestUrl];r.status=302;r.redirect="https://release-assets.githubusercontent.com/"+std::string(1800,'x');routes[r.redirect].body=manifestBody;
+  auto&b=routes[binaryUrl];b.status=302;b.redirect="https://release-assets.githubusercontent.com/"+std::string(1800,'y');routes[b.redirect].body=imageBody;
+  check();install(true);
+ });
  test("same semantic version is not offered",[]{strncpy(current.version,tag.c_str(),31);check(false);});
  test("older release is not offered",[]{strcpy(current.version,"99.0.0");check(false);});
  test("draft is rejected",[]{auto j=cJSON_Parse(releaseBody.c_str());cJSON_ReplaceItemInObject(j,"draft",cJSON_CreateBool(true));char*s=cJSON_PrintUnformatted(j);routes[remora::Api].body=s;cJSON_free(s);cJSON_Delete(j);check(false);});

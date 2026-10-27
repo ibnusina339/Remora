@@ -46,7 +46,9 @@ static esp_http_client_handle_t open(const std::string& url) {
  esp_http_client_config_t config{};
  config.url=url.c_str();config.transport_type=HTTP_TRANSPORT_OVER_SSL;
  config.crt_bundle_attach=esp_crt_bundle_attach;config.timeout_ms=15000;
- config.buffer_size=2048;config.keep_alive_enable=false;config.max_redirection_count=8;
+ config.buffer_size=2048;config.keep_alive_enable=false;
+ // GitHub asset redirects contain long signed URLs; keep release API requests small.
+ config.buffer_size_tx=url==Api?512:4096;config.max_redirection_count=8;
  auto client=esp_http_client_init(&config);
  if(!client)return nullptr;
  esp_http_client_set_header(client,"User-Agent","Remora-ESP32C6");

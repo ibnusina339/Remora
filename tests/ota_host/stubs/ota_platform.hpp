@@ -91,18 +91,19 @@ extern "C" time_t __wrap_time(time_t* out) { if(out)*out=fixture::clock;return f
 inline int esp_crt_bundle_attach(void*) { return ESP_OK; }
 struct esp_http_client_config_t {
  const char* url=nullptr;int transport_type=0;int(*crt_bundle_attach)(void*)=nullptr;
- int timeout_ms=0,buffer_size=0,max_redirection_count=0;bool keep_alive_enable=false;
+ int timeout_ms=0,buffer_size=0,buffer_size_tx=0,max_redirection_count=0;bool keep_alive_enable=false;
 };
-struct MockHttp { std::string url;size_t offset=0;int count=0;std::map<std::string,std::string>headers; };
+struct MockHttp { std::string url;size_t offset=0;int count=0;std::map<std::string,std::string>headers;int txBuffer=512; };
 using esp_http_client_handle_t=MockHttp*;
 inline MockHttp* esp_http_client_init(const esp_http_client_config_t* c) {
  fixture::require(c->crt_bundle_attach&&c->transport_type==HTTP_TRANSPORT_OVER_SSL,"HTTPS certificate verification missing");
  if(!fixture::initOk)return nullptr;
- ++fixture::clients;return new MockHttp{c->url,0,0,{}};
+ ++fixture::clients;return new MockHttp{c->url,0,0,{},c->buffer_size_tx?c->buffer_size_tx:512};
 }
 inline int esp_http_client_set_header(MockHttp* h,const char* k,const char* v) { h->headers[k]=v;return ESP_OK; }
 inline int esp_http_client_open(MockHttp* h,int) {
  if(fixture::beforeHttpOpen)fixture::beforeHttpOpen(h->url);
+ if(h->url.size()+128>size_t(h->txBuffer))return ESP_FAIL;
  fixture::require(h->headers["User-Agent"]=="Remora-ESP32C6","missing firmware user agent");
  if(h->url.rfind("https://",0)!=0)++fixture::insecure;
  h->offset=0;h->count=0;
