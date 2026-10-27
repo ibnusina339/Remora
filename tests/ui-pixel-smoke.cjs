@@ -45,7 +45,7 @@ const reverse=fresh();reverse.press(3);reverse.press(6);reverse.press(6);reverse
 reverse.press(reverse.state().sequence[0]);reverse.advance(4300);for(const n of reverse.state().sequence.slice().reverse())reverse.press(n);assert.equal(reverse.state().view,'clear');
 // Every settings entry opens and returns, including physical-key list navigation.
 const settings=fresh();settings.press(1);settings.press(6);
-for(const expected of ['sound','display','theme','leds','battery','profiles','network','system','stats','firstLoginConfirm']){
+for(const expected of ['sound','display','theme','leds','battery','profiles','network','system','stats','firstLoginConfirm','autoOff']){
   settings.press(6);assert.equal(settings.state().view,expected);settings.press(4);assert.equal(settings.state().view,'settings');settings.press(5);
 }
 assert.equal(settings.state().selection,0);

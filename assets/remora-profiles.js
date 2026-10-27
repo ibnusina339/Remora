@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  const limit=5,fields=['sound','masterVolume','bgmVolume','sfxVolume','display','theme','leds','difficulty','best','bestReaction','games','totalCorrect','records','difficultyByGame','phraseCounters','playerName','playerId','tutorialDone'];
+  const limit=5,fields=['autoOffMinutes','sound','masterVolume','bgmVolume','sfxVolume','display','theme','leds','difficulty','best','bestReaction','games','totalCorrect','records','difficultyByGame','phraseCounters','playerName','playerId','tutorialDone'];
   const clone=v=>JSON.parse(JSON.stringify(v));
   function create(storage,defaults,legacy={}){
     let data;try{data=JSON.parse(storage.getItem('remora-profiles'));}catch(_){}

@@ -1,4 +1,5 @@
 #include "power_policy.hpp"
+#include "idle_policy.hpp"
 #include "rating_prompt_test.hpp"
 #include "semver.hpp"
 #include "game_engine.hpp"
@@ -11,4 +12,6 @@ int main(){auto v=SemVer::parse("1.10.0"),old=SemVer::parse("1.9.9");assert(v.va
 
 for(int d=0;d<5;d++)for(int dir:{1,2,3,5}){GameEngine e;e.start(9,d,37);auto&s=e.s;int head=dir==1?6*s.cols:dir==3?7*s.cols-1:dir==2?5:(s.rows-1)*s.cols+5;int expected=dir==1?7*s.cols-1:dir==3?6*s.cols:dir==2?(s.rows-1)*s.cols+5:5;s.body={head};s.rocks.clear();s.food=3*s.cols+10;s.dir=s.nextDir=dir;e.advance(s.tickMs);if(d<3){assert(s.phase==Phase::Snake);assert(s.body[0]==expected);}else assert(s.phase==Phase::Over);}
 testRatingPrompts();
+IdlePolicy idle;assert(!idle.due(0,5,true));assert(!idle.due(299999,5,true));assert(idle.due(300000,5,true));idle.touch(300000);assert(!idle.due(599999,5,true));assert(idle.due(600000,5,true));assert(!idle.due(900000,5,false));assert(!idle.due(900001,5,true));assert(!idle.due(99999999,0,true));assert(validAutoOff(-1)==5&&validAutoOff(0)==0);
+
 std::cout<<"Native core: all 11 games x 5 presets, power policy and SemVer OK\n";}

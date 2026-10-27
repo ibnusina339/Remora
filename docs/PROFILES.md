@@ -8,13 +8,13 @@ Mulai v0.2.0 ada satu profil developer tambahan, XDAXA, di luar lima slot pemain
 
 ## Pemain baru
 
-1. Settings → First Login → konfirmasi.
+1. Settings â†’ First Login â†’ konfirmasi.
 2. REMORA menyimpan penanda lalu masuk standby setelah **tiga detik**.
 3. Nyalakan kembali dengan menahan kiri atas + kanan atas dua detik.
 4. Buat **profil baru** dengan nama maksimal tujuh karakter.
 5. Tutorial menyapa nama itu, mengenalkan Classic, INFO, Difficulty dan Settings.
 
-Profil lama tetap tersimpan. Saat kelima slot terisi, konfirmasi First Login ditolak dan layar meminta menghapus satu profil lewat Settings → Profiles. Menghapus profil memerlukan konfirmasi; hanya data profil pilihan yang dihapus. Menambah dari slot kosong juga membuka penamaan dan tutorial.
+Profil lama tetap tersimpan. Saat kelima slot terisi, konfirmasi First Login ditolak dan layar meminta menghapus satu profil lewat Settings â†’ Profiles. Menghapus profil memerlukan konfirmasi; hanya data profil pilihan yang dihapus. Menambah dari slot kosong juga membuka penamaan dan tutorial.
 
 Tutorial menggunakan kotak dialog dengan teks muncul bertahap. Pendampingnya kucing duduk biasa **tanpa lidah**. Tekan hijau saat teks belum selesai untuk menampilkan seluruh pesan. Mulai v0.2.0, dialog lebih kecil, teks rata tengah dan tidak memakai label nama pendamping. Setelah teks lengkap, hijau menutup pesan agar layar praktik terlihat penuh. Pesan muncul kembali saat langkah berikutnya; tombol berwarna yang disebutkan melanjutkan latihan. Pintasan rahasia: tahan **kiri bawah + kanan bawah / KEY4 + KEY6 selama tiga detik**. Pintasan hanya berlaku saat tutorial.
 
@@ -29,3 +29,7 @@ Pergantian, penamaan, penghapusan profil dan First Login langsung disimpan; peru
 **Erase seluruh chip, perubahan peta partisi, atau kerusakan flash tetap dapat menghapus data.** Karena cloud dibatalkan, tidak ada pemulihan otomatis dari internet. Update memakai peta partisi ini dan jangan menjalankan `erase-flash`.
 
 Simulator menyimpan profil di `localStorage` browser. Data browser tidak otomatis dipindahkan ke perangkat. Profil lama simulator dimigrasikan menjadi slot pertama tanpa menghapus rekor.
+
+## Auto Off (v0.4.0)
+
+Settings > Auto Off menyimpan interval per profil: nonaktif, 1, 2, **5 (default)**, 10, 15 atau 30 menit. Tekan ungu/kuning untuk mengurangi/menambah dan merah/hijau untuk kembali. Setiap input tombol mengulang timer. Jika dibiarkan, data disimpan dan animasi mati berjalan sebelum standby. Timer ditunda selama OTA aktif dan fase daya/boot; interval baru dimulai setelahnya. Profil dari versi sebelumnya mendapat default lima menit.

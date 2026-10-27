@@ -6,7 +6,7 @@ function shot(){app.show({});for(const[x,y,w,h]of app.drawCalls)assert.ok(x>=0&&
 for(let i=0;i<3;i++){app.test.arcade.start('classic');app.test.state.score=700;app.test.state.clears=2;app.test.arcade.fail('TEST');app.advance(2799);assert.equal(app.state().view,'gameover');app.advance(1);assert.equal(app.state().view,i===2?'ratingInvite':'gameover');}
 shot();app.press(6);assert.equal(app.state().view,'ratingStars');app.press(3);app.press(6);app.press(3);assert.equal(app.state().view,'ratingThanks');app.press(6);assert.equal(app.state().view,'gameover');
 // Global setting is visible only in XDAXA and survives a reload / profile switch.
-app.show({view:'profiles',profileSelection:5});app.press(6);app.press(3);app.press(3);app.press(3);app.show({view:'settings',selection:10});app.press(6);assert.equal(app.state().view,'ratingPromptSettings');shot();app.press(1);assert.equal(app.state().ratePromptEnabled,false);app.press(4);assert.equal(app.state().view,'settings');
+app.show({view:'profiles',profileSelection:5});app.press(6);app.press(3);app.press(3);app.press(3);app.show({view:'settings',selection:11});app.press(6);assert.equal(app.state().view,'ratingPromptSettings');shot();app.press(1);assert.equal(app.state().ratePromptEnabled,false);app.press(4);assert.equal(app.state().view,'settings');
 const reload=launch(app.store);reload.boot();assert.equal(reload.state().ratePromptEnabled,false);assert.notEqual(reload.state().activeProfile,5);
 require('./rating-shared-profile-smoke.cjs');
 // MONO persists, keeps useful color cues, and pregame header contains only battery UI.

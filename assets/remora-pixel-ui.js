@@ -536,8 +536,13 @@
       else if(v==='home'||v==='modeSelect')carousel();
       else if(v==='pregame')pregame();
       else if(v==='gameInfo')info();
-      else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILES','NETWORK','SYSTEM','STATS','FIRST LOGIN',...(s.activeProfile===5&&s.developerUnlocked?['RATING PROMPT']:[])],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
+      else if(v==='settings')list('SETTINGS',['SOUND','DISPLAY','THEME','KEY LIGHT','BATTERY','PROFILES','NETWORK','SYSTEM','STATS','FIRST LOGIN','AUTO OFF',...(s.activeProfile===5&&s.developerUnlocked?['RATING PROMPT']:[])],s.selection,['sound','sun','theme','light','battery','profile','wifi','system','stats']);
       else if(root.RemoraRatings&&['rateMenu','rateGames','ratingStars','ratingSuggestions','ratingThanks','devGate','rateResults','rateArchive','rateReport','ratingInvite','ratingPromptSettings'].includes(v))ratingView(v);
+      else if(v==='autoOff'){
+        header('AUTO OFF');const minutes=root.RemoraIdlePolicy.valid(s.autoOffMinutes);
+        frame(11,76,298,75,P.amber,2);text(minutes?minutes+' MENIT':'NONAKTIF',160,99,4,P.paper,'center');
+        smallText(minutes?'MATI SETELAH TANPA INPUT':'AUTO OFF DINONAKTIFKAN',160,168,P.dim,'center');smallText('TERSIMPAN DI PROFIL INI',160,188,P.dim,'center');footer(['LESS',null,'MORE','BACK',null,'OK']);
+      }
       else if(v==='profiles')list('PLAYER PROFILE',s.profiles.map((p,i)=>p?(i===s.activeProfile?'> ':'')+p.playerName:'+ ADD PLAYER'),s.profileSelection);
       else if(v==='profileAction')list('PLAYER',['SWITCH USER','EDIT NAME','DELETE USER'],s.profileAction);
       else if(v==='deleteProfile')detail('HAPUS PEMAIN?',s.profiles[s.profileTarget]?.playerName||'','REKOR PEMAIN INI AKAN DIHAPUS','profile',[null,null,null,'BATAL',null,'HAPUS']);

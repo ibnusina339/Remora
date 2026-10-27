@@ -7,6 +7,7 @@
 #include "esp_lcd_panel_ops.h"
 #include "lvgl.h"
 #include "rating_prompt.hpp"
+#include "idle_policy.hpp"
 #include "game_engine.hpp"
 namespace remora {
 inline constexpr int Keys[]={1,2,3,4,6,7};
@@ -15,7 +16,7 @@ inline constexpr int UserProfileCount=5,DeveloperSlot=5,ProfileCount=6;
 struct UserProfile {
  RatingPlayStats ratingPlay[GameCount];
  uint32_t id=0;bool used=false,tutorialDone=false;uint8_t difficulty[GameCount]{};int records[GameCount][5]{};uint32_t phraseCounters[GameCount]{};
- int master=70,bgm=35,sfx=75,brightness=100,leds=60;bool ocean=false,mono=false;uint16_t ratingAsked=0;char player[8]="PLAYER";uint32_t games=0,wins=0;
+ int autoOffMinutes=5;int master=70,bgm=35,sfx=75,brightness=100,leds=60;bool ocean=false,mono=false;uint16_t ratingAsked=0;char player[8]="PLAYER";uint32_t games=0,wins=0;
 };
 struct Preferences:UserProfile {
  RatingPromptPolicy ratingPrompt;UserProfile profiles[ProfileCount];int active=0,spiMHz=10;bool spiPending=false,firstLoginPending=true;

@@ -10,3 +10,5 @@ require('./tutorial-snake-wifi-smoke.cjs');
 require('./ratings-smoke.cjs');
 
 require('./polish-reminders-smoke.cjs');
+
+require('./auto-off-smoke.cjs');

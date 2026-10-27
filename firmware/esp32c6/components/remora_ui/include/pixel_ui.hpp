@@ -4,7 +4,7 @@
 #include "power_policy.hpp"
 #include <string>
 namespace remora {
-enum class View { Home,Pregame,Guide,Playing,Settings,Sound,Display,Profile,Name,Stats,Network,WifiScan,WifiMethod,Text,WifiStatus,Portal,Ota,System,Diagnostics,LedTest,SpeakerTest,DisplayTest,ButtonTest,Secret,Profiles,ProfileAction,ConfirmDelete,ConfirmFirst,SlotsFull,FirstCountdown,Boot,ConfirmShutdown,Shutdown,Notice,DevGate,RateMenu,RateGames,RatingStars,RatingSuggestions,RatingThanks,RateResults,RateArchive,RateReport,RateInvite,RatePromptSettings };
+enum class View { Home,Pregame,Guide,Playing,Settings,Sound,Display,Profile,Name,Stats,Network,WifiScan,WifiMethod,Text,WifiStatus,Portal,Ota,System,Diagnostics,LedTest,SpeakerTest,DisplayTest,ButtonTest,Secret,Profiles,ProfileAction,ConfirmDelete,ConfirmFirst,SlotsFull,FirstCountdown,Boot,ConfirmShutdown,Shutdown,Notice,DevGate,RateMenu,RateGames,RatingStars,RatingSuggestions,RatingThanks,RateResults,RateArchive,RateReport,RateInvite,RatePromptSettings,AutoOff };
 struct UiModel {
  Preferences* prefs=nullptr;GameEngine*engine=nullptr;View view=View::Home;
  PowerPhase power=PowerPhase::Standby;Battery battery;bool usb=false;

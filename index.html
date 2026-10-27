@@ -276,6 +276,7 @@
   <script src="assets/remora-audio.js"></script>
   <script src="assets/remora-arcade.js"></script>
   <script src="assets/remora-power-policy.js"></script>
+  <script src="assets/remora-idle-policy.js"></script>
   <script src="assets/remora-display-settings.js"></script>
   <script src="assets/remora-profiles.js"></script>
   <script src="assets/remora-tutorial.js"></script>
@@ -311,7 +312,7 @@
       };
       const homeColors = [C.cyan, C.yellow, C.purple, C.green, C.blue, C.white];
       const gameCatalog = window.RemoraArcade.catalog;
-      const settingsItems = ['SOUND', 'DISPLAY', 'THEME', 'KEY LIGHT', 'BATTERY', 'PROFILE', 'NETWORK', 'SYSTEM', 'STATS', 'FIRST LOGIN'];
+      const settingsItems = ['SOUND', 'DISPLAY', 'THEME', 'KEY LIGHT', 'BATTERY', 'PROFILE', 'NETWORK', 'SYSTEM', 'STATS', 'FIRST LOGIN', 'AUTO OFF'];
       const networkItems = ['SCAN WIFI', 'PHONE SETUP', 'OTA UPDATE', 'WIFI STATUS', 'FORGET WIFI'];
       const systemItems = ['DIAGNOSTICS', 'BUTTON TEST', 'LED TEST', 'SPEAKER TEST', 'DISPLAY TEST'];
       const ledTestColors = [C.red, C.green, C.blue, C.white];
@@ -349,7 +350,7 @@
         }
         return batteryCurve[batteryCurve.length - 1][0];
       }
-      const defaults = { sound: true, masterVolume:70,bgmVolume:35,sfxVolume:75,soundSelection:0,display: 80, theme: 'AMBER', leds: 60, difficulty: 1, best: 0, bestReaction: null, games: 0,
+      const defaults = { autoOffMinutes:5, sound: true, masterVolume:70,bgmVolume:35,sfxVolume:75,soundSelection:0,display: 80, theme: 'AMBER', leds: 60, difficulty: 1, best: 0, bestReaction: null, games: 0,
         totalCorrect: 0, records: {}, difficultyByGame: {}, phraseCounters: {},
         playerName: '', playerId: '', tutorialDone:false };
       let saved = {};
@@ -376,6 +377,7 @@
       let timersPaused=false;
       let powerKeys=0, powerPrevious='off', suspendedView=null, menuRepeat=null;
       const powerPolicy=window.RemoraPowerPolicy.create();
+      const idlePolicy=window.RemoraIdlePolicy.create();
       const displaySettings=window.RemoraDisplaySettings.create(localStorage);
       let generation = 0;
       let speedTick = null;
@@ -410,7 +412,7 @@
         try {
           profiles.capture(state);
           localStorage.setItem('remora-sim', JSON.stringify({ sound: state.sound, display: state.display, theme: state.theme,
-            masterVolume:state.masterVolume,bgmVolume:state.bgmVolume,sfxVolume:state.sfxVolume,
+            autoOffMinutes:state.autoOffMinutes,masterVolume:state.masterVolume,bgmVolume:state.bgmVolume,sfxVolume:state.sfxVolume,
             leds: state.leds, difficulty: state.difficulty, best: state.best,
             bestReaction: state.bestReaction, games: state.games,
             totalCorrect: state.totalCorrect, records: state.records, difficultyByGame:state.difficultyByGame, phraseCounters: state.phraseCounters,
@@ -571,7 +573,7 @@
           cancelExitHold();stopAnimation();state.power='on';state.view='powerNotice';state.noticeKind=phase;render();
         }
       }
-      function powerTick(){if(['off','shutdown'].includes(state.power))return;applyPowerPhase(powerPolicy.update(performance.now(),powerInput()));if(displaySettings.tick(performance.now()))render();checkShutdownShortcut();}
+      function powerTick(){if(['off','shutdown'].includes(state.power))return;applyPowerPhase(powerPolicy.update(performance.now(),powerInput()));if(displaySettings.tick(performance.now()))render();checkShutdownShortcut();if(idlePolicy.due(performance.now(),state.autoOffMinutes,state.power==='on'&&!['powerNotice','firstLoginCountdown'].includes(state.view)&&!state.otaBusy)){powerOff(true);}}
       setInterval(powerTick,20);
       batterySlider.addEventListener('input', () => setBatteryPercent(batterySlider.value));
       chargerCheckbox.addEventListener('change', () => setCharging(chargerCheckbox.checked));
@@ -848,13 +850,14 @@
       }
       function cancelExitHold(keepKeyboard=false) { if(exitHoldTimer!==null)clearTimeout(exitHoldTimer);exitHoldTimer=null;state.exitHolding=false;if(!keepKeyboard)keyboardRedHeld=false; }
       function buttonDown(key,onExit) {
+        if(key<1||key>6)return true;if(!(powerKeys&(1<<(key-1))))idlePolicy.touch(performance.now());
         menuRepeated&=~(1<<(key-1));powerKeys|=1<<(key-1);powerTick();
         if(state.power!=='on'||state.view==='powerNotice')return true;
         if(shutdownContext&&state.view!=='shutdownConfirm')return true;
         if(key===4&&canCancelName()){clearNameCancelHold();nameCancelTimer=setTimeout(()=>{nameCancelTimer=null;if(state.power==='on'&&!shutdownContext&&canCancelName()){onExit?.();cancelNameEditor();}},1000);}
         if(state.tutorialStep>=0){if((powerKeys&40)===40){if(!skipTutorialTimer)skipTutorialTimer=setTimeout(()=>{skipTutorialTimer=null;if(state.tutorialStep>=0&&(powerKeys&40)===40){finishTutorial();}},3000);return true;}return false;}
         if(['home','modeSelect'].includes(state.view)&&[1,3].includes(key)){
-          if(menuRepeat)clearTimeout(menuRepeat);const repeat=()=>{if((powerKeys&(1<<(key-1)))&&['home','modeSelect'].includes(state.view)){menuRepeated|=1<<(key-1);press(key);menuRepeat=setTimeout(repeat,150);}};menuRepeat=setTimeout(repeat,500);
+          if(menuRepeat)clearTimeout(menuRepeat);const repeat=()=>{if((powerKeys&(1<<(key-1)))&&['home','modeSelect'].includes(state.view)){menuRepeated|=1<<(key-1);press(key,false);menuRepeat=setTimeout(repeat,150);}};menuRepeat=setTimeout(repeat,500);
         }
         if(key===4&&state.power==='on'&&arcade.active()){
           cancelExitHold(true);state.exitHolding=true;state.exitHoldStarted=performance.now();const mode=state.mode;
@@ -867,7 +870,7 @@
         }
         return arcade.keyDown(key);
       }
-      function buttonUp(key){const consumed=Boolean((shutdownConsumed|menuRepeated)&(1<<(key-1)))||(key===4&&nameCancelConsumed);if(key===4){clearNameCancelHold();nameCancelConsumed=false;}shutdownConsumed&=~(1<<(key-1));menuRepeated&=~(1<<(key-1));if(skipTutorialTimer){clearTimeout(skipTutorialTimer);skipTutorialTimer=null;}powerKeys&=~(1<<(key-1));powerTick();if(menuRepeat){clearTimeout(menuRepeat);menuRepeat=null;}if(key===4)cancelExitHold(true);const handled=arcade.keyUp(key);return consumed||handled;}
+      function buttonUp(key){if(key<1||key>6)return true;if(powerKeys&(1<<(key-1)))idlePolicy.touch(performance.now());const consumed=Boolean((shutdownConsumed|menuRepeated)&(1<<(key-1)))||(key===4&&nameCancelConsumed);if(key===4){clearNameCancelHold();nameCancelConsumed=false;}shutdownConsumed&=~(1<<(key-1));menuRepeated&=~(1<<(key-1));if(skipTutorialTimer){clearTimeout(skipTutorialTimer);skipTutorialTimer=null;}powerKeys&=~(1<<(key-1));powerTick();if(menuRepeat){clearTimeout(menuRepeat);menuRepeat=null;}if(key===4)cancelExitHold(true);const handled=arcade.keyUp(key);return consumed||handled;}
       function goHome() { cancelExitHold();stopTimers(); state.view = 'home'; state.mode = null; state.pulse = 0; render(); say('Menu utama'); }
       function openPregame() {
         cancelExitHold();stopTimers();state.difficulty=state.difficultyByGame[gameCatalog[state.modeSelection].mode]??1; state.view = 'pregame'; state.mode = null; state.pulse = 0; render();
@@ -882,8 +885,8 @@
       function startMode(mode) { arcade.start(mode); }
       function currentSettingsItems(){return state.activeProfile===5&&state.developerUnlocked?[...settingsItems,'RATING PROMPT']:settingsItems;}
       function chooseSetting() {
-        if(state.selection===10&&state.activeProfile===5&&state.developerUnlocked){ratings.openPromptSettings();return;}
-        state.view = ['sound', 'display', 'theme', 'leds', 'battery', 'profiles', 'network', 'system', 'stats', 'firstLoginConfirm'][state.selection];
+        if(state.selection===11&&state.activeProfile===5&&state.developerUnlocked){ratings.openPromptSettings();return;}
+        state.view = ['sound', 'display', 'theme', 'leds', 'battery', 'profiles', 'network', 'system', 'stats', 'firstLoginConfirm', 'autoOff'][state.selection];
         if(state.view==='profiles'){save();state.profileSelection=profiles.snapshot().active;}
         if (state.view === 'network'){state.networkSelection=0;state.networkSource='network';}
         if (state.view === 'sound') state.soundSelection = 0;
@@ -907,8 +910,9 @@
       function playTestTone(key) {
         audio.tone(key);
       }
-      function press(key) {
+      function press(key,activity=true) {
         if (state.power !== 'on' || ['chargeRequired','powerNotice'].includes(state.view) || key < 1 || key > 6) return;
+        if(activity)idlePolicy.touch(performance.now());
         audio.unlock();
         if(shutdownContext){if(state.view==='shutdownConfirm'){if(key===4){resumeShutdownContext();render();}else if(key===6){resumeShutdownContext(false);powerOff(true);}}return;}
         if(state.tutorialStep>=0){tutorialPress(key);return;}
@@ -1010,6 +1014,10 @@
           if(key===4||key===6){state.view='settings';render();return;}
           if(key===2||key===5)state.soundSelection=(state.soundSelection+(key===2?2:1))%3;
           if(key===1||key===3){const field=['masterVolume','bgmVolume','sfxVolume'][state.soundSelection];state[field]=Math.max(0,Math.min(100,state[field]+(key===1?-10:10)));state.sound=state.masterVolume>0;save();}
+          render();
+        } else if(state.view==='autoOff'){
+          if(key===4||key===6){state.view='settings';state.selection=10;save();}
+          else if(key===1||key===3){const options=window.RemoraIdlePolicy.intervals,i=options.indexOf(window.RemoraIdlePolicy.valid(state.autoOffMinutes));state.autoOffMinutes=options[Math.max(0,Math.min(options.length-1,i+(key===1?-1:1)))];save();}
           render();
         } else if(state.view==='display'){
           if(displaySettings.pending()){

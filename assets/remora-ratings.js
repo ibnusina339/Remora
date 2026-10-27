@@ -87,7 +87,7 @@
    s.rateHint='';sfx(key===4?'back':s.view==='ratingStars'&&(key===1||key===3)?'star':key===6?'confirm':'move');
    if(s.view==='ratingPromptSettings'){
     if(key===1||key===3){policy.enabled=key===3;s.ratePromptEnabled=policy.enabled;policyWrite();sfx('confirm');}
-    else if(key===4||key===6){s.view='settings';s.selection=10;}
+    else if(key===4||key===6){s.view='settings';s.selection=11;}
    }else if(s.view==='ratingInvite'){
     if(key===4){s.view='gameover';rateReturn=null;sfx('back');}
     else if(key===6){const game=s.rateInviteGame;start(game);rateReturn='gameover';sfx('confirm');}

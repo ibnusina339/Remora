@@ -2,9 +2,9 @@
 
 Konsol enam keyswitch RGB dengan 11 game, maskot sapi, dan kucing rahasia. Repo ini berisi simulator browser serta **firmware native ESP32-C6 SuperMini** untuk skema Rev K2.
 
-Target: ESP32-C6FH4 flash 4 MB, TFT ST7789V 320×240, enam SK6812 MINI-E, PAM8302A PWM, TP4056 protection. Firmware memakai ESP-IDF **5.5.2** dan LVGL **9.2.2**.
+Target: ESP32-C6FH4 flash 4 MB, TFT ST7789V 320Ã—240, enam SK6812 MINI-E, PAM8302A PWM, TP4056 protection. Firmware memakai ESP-IDF **5.5.2** dan LVGL **9.2.2**.
 
-Versi terbaru: **[v0.3.0](https://github.com/ibnusina339/Remora/releases/tag/v0.3.0)**, dengan SFX tambahan, ajakan rating opsional, dan tema White / Black.
+Versi terbaru: **[v0.4.0](https://github.com/ibnusina339/Remora/releases/tag/v0.4.0)**, dengan SFX tambahan, ajakan rating opsional, dan tema White / Black.
 
 ## Mulai
 
@@ -21,13 +21,13 @@ Versi terbaru: **[v0.3.0](https://github.com/ibnusina339/Remora/releases/tag/v0.
 - **Lima profil lokal:** nama, rekor per game/Difficulty, statistik, preferensi dan tutorial terpisah. Tidak membutuhkan cloud/Wi-Fi.
 - **First Login:** membuat pemain baru saat penyalaan berikutnya, setelah countdown tiga detik. Jika lima slot penuh, hapus satu profil dulu.
 - Tutorial dialog ketik dengan sapaan nama pemain dan kucing duduk **tanpa lidah**. Skip rahasia KEY4 + KEY6 tiga detik.
-- Software lock Rev K2: baterai ≤5% / pulih ≥10%; USB charger + baterai ≥80% mengunci game. Standby memakai light sleep.
+- Software lock Rev K2: baterai â‰¤5% / pulih â‰¥10%; USB charger + baterai â‰¥80% mengunci game. Standby memakai light sleep.
 - Saat charging standby, KEY1 saja dua detik menampilkan persen baterai lima detik. Tanpa USB, KEY1 saja diabaikan.
-- Volume utama, BGM dan SFX 0–100%; enam meow pendek, efek game dan musik menu.
+- Volume utama, BGM dan SFX 0â€“100%; enam meow pendek, efek game dan musik menu.
 - SPI 10 MHz default, trial 16/20/26/40 MHz, konfirmasi 15 detik, fallback setelah timeout/error/reset saat trial. FPS hardware diukur pada perangkat.
 - OTA GitHub Releases dengan Semantic Versioning, SHA-256, dua slot aplikasi, boot rollback dan partisi profil terpisah.
 
-Mulai v0.2.0 tersedia tutorial lebih ringkas, kontrol Snake KEY2/5/6/4 dan pilihan SCAN WIFI pada menu Settings → Network. Wi-Fi dipindai setelah memilih Scan, tanpa input nama jaringan manual pada perangkat. Simulator menampilkan contoh jaringan; pemindaian asli berjalan di firmware ESP32. Lihat [catatan v0.2.0](docs/releases/v0.2.0.md).
+Mulai v0.2.0 tersedia tutorial lebih ringkas, kontrol Snake KEY2/5/6/4 dan pilihan SCAN WIFI pada menu Settings â†’ Network. Wi-Fi dipindai setelah memilih Scan, tanpa input nama jaringan manual pada perangkat. Simulator menampilkan contoh jaringan; pemindaian asli berjalan di firmware ESP32. Lihat [catatan v0.2.0](docs/releases/v0.2.0.md).
 
 - **Rate Me:** rating setengah bintang untuk setiap game dan lima aspek Remora; saran maksimal dua. Lima profil pemain ditambah XDAXA yang dilindungi kode akses. [Panduan rating](docs/RATINGS.md).
 

@@ -37,13 +37,14 @@ function launch(store={value:JSON.stringify({playerName:'PLAYER',playerId:'RM202
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-meow-sample.js'),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-audio.js'),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-arcade.js'),'utf8'),sandbox);
-  for(const file of ['remora-power-policy.js','remora-display-settings.js','remora-profiles.js','remora-tutorial.js','remora-ratings.js'])vm.runInContext(fs.readFileSync(path.join(root,'assets',file),'utf8'),sandbox);
+  for(const file of ['remora-power-policy.js','remora-idle-policy.js','remora-display-settings.js','remora-profiles.js','remora-tutorial.js','remora-ratings.js'])vm.runInContext(fs.readFileSync(path.join(root,'assets',file),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(root,'assets/remora-pixel-ui.js'),'utf8'),sandbox);
   let script=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n').split('<script>')[1].split('</script>')[0];
   script=script.replace('      render();\n    })();','      window.__test = {state, render, arcade};\n      render();\n    })();');
   vm.runInContext(script,sandbox);
   function advance(ms){const end=now+ms;let steps=0;for(;;){const entries=[...timers].filter(([,t])=>t.time<=end).sort((a,b)=>a[1].time-b[1].time);if(!entries.length)break;if(++steps>10000)throw Error('Timer loop');const [key,t]=entries[0];now=t.time;timers.delete(key);if(t.repeat)timers.set(key,{...t,time:now+t.repeat});t.fn();}now=end;}
   return {store,el,keys,document,pixels,drawCalls,advance,ctx:context,
+    jump(ms){now+=ms;for(const timer of timers.values())timer.time+=ms;},
     press:n=>sandbox.window.remoraSimulator.press(n),state:()=>sandbox.window.remoraSimulator.getState(),
     setBattery:n=>sandbox.window.remoraSimulator.setBatteryPercent(n),
     setCharging:n=>sandbox.window.remoraSimulator.setCharging(n),
