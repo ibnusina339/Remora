@@ -13,6 +13,7 @@
 #include <mutex>
 #include <cstring>
 #include <algorithm>
+#include <cstdio>
 
 namespace remora {
 static constexpr const char* Api="https://api.github.com/repos/ibnusina339/Remora/releases/latest";
@@ -43,16 +44,20 @@ static esp_http_client_handle_t open(const std::string& url) {
  esp_http_client_config_t config{};
  config.url=url.c_str();config.transport_type=HTTP_TRANSPORT_OVER_SSL;
  config.crt_bundle_attach=esp_crt_bundle_attach;config.timeout_ms=15000;
- config.buffer_size=2048;config.keep_alive_enable=true;config.max_redirection_count=8;
+ config.buffer_size=2048;config.keep_alive_enable=false;config.max_redirection_count=8;
  auto client=esp_http_client_init(&config);
  if(!client)return nullptr;
  esp_http_client_set_header(client,"User-Agent","Remora-ESP32C6");
+ esp_http_client_set_header(client,"Connection","close");
  esp_http_client_set_header(client,"Accept",url==Api?"application/vnd.github+json":"application/octet-stream");
  // Streaming mode handles redirects explicitly, retaining certificate checks.
  for(int redirects=0;redirects<=8&&!cancelled;++redirects) {
-  if(esp_http_client_get_transport_type(client)!=HTTP_TRANSPORT_OVER_SSL||
-     esp_http_client_open(client,0)!=ESP_OK||esp_http_client_fetch_headers(client)<0)break;
-  int code=esp_http_client_get_status_code(client);
+  if(esp_http_client_get_transport_type(client)!=HTTP_TRANSPORT_OVER_SSL)break;
+  int opened=esp_http_client_open(client,0);
+  auto length=opened==ESP_OK?esp_http_client_fetch_headers(client):-1;
+  int code=opened==ESP_OK?esp_http_client_get_status_code(client):0;
+  printf("OTA|HTTP|resource=%s|open=%d|length=%lld|status=%d\n",url==Api?"release":"asset",opened,(long long)length,code);
+  if(opened!=ESP_OK||length<0)break;
   if(code==200)return client;
   if(code==403||code==429)set("GitHub membatasi akses. Coba lagi nanti.");
   if(code<300||code>=400||redirects==8||esp_http_client_set_redirection(client)!=ESP_OK)break;
@@ -80,8 +85,10 @@ static std::string get(const std::string& url,size_t limit) {
   if(!n)break;
   if(body.size()+n>limit){ok=false;break;}
   body.append(buffer,n);
+  if(esp_http_client_is_complete_data_received(client))break;
  }
  ok=ok&&!cancelled&&esp_http_client_is_complete_data_received(client);
+ printf("OTA|METADATA|resource=%s|bytes=%u|complete=%d|ok=%d\n",url==Api?"release":"manifest",unsigned(body.size()),esp_http_client_is_complete_data_received(client),ok);
  close(client);return ok?body:std::string{};
 }
 static bool validManifest(const cJSON* manifest,const SemVer& release) {
@@ -174,6 +181,7 @@ static void installFirmware() {
    ok=mbedtls_sha256_update(&sha,buffer,n)==0&&esp_ota_write(ota,buffer,n)==ESP_OK;
   }
   set("Mengunduh firmware...",int(received*100/expectedSize));taskYIELD();
+  if(esp_http_client_is_complete_data_received(client))break;
  }
  if(client){ok=ok&&esp_http_client_is_complete_data_received(client);close(client);}
  uint8_t digest[32]{};
