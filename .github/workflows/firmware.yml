@@ -18,6 +18,12 @@ jobs:
           node-version: '22'
       - run: mkdir -p previews && node tests/ui-smoke.cjs && node tests/power-policy-smoke.cjs && node tests/profiles-smoke.cjs
       - run: g++ -std=gnu++17 -Wall -Wextra -I firmware/esp32c6/components/remora_core/include firmware/esp32c6/components/remora_core/src/*.cpp firmware/esp32c6/tests/core_test.cpp -o /tmp/remora-core && /tmp/remora-core
+      - name: Test Wi-Fi lifecycle with controlled driver I/O
+        run: |
+          g++ -std=gnu++17 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+            -I tests/network_host/stubs -I firmware/esp32c6/components/remora_core/include \
+            tests/network_host/network_test.cpp -pthread -o /tmp/remora-network-test
+          /tmp/remora-network-test
   firmware:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.2
