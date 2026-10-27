@@ -76,6 +76,11 @@ int main(int argc,char** argv) {
   catch(...){cJSON_InitHooks(nullptr);beforeHttpOpen={};throw;}
   cJSON_InitHooks(nullptr);beforeHttpOpen={};
  });
+ test("complete HTTP messages do not wait for another read",[]{
+  routes[remora::Api].failAfter=(releaseBody.size()+1023)/1024;
+  routes[manifestUrl].failAfter=(manifestBody.size()+1023)/1024;
+  check();routes[binaryUrl].failAfter=(imageBody.size()+2047)/2048;install(true);
+ });
  test("17-byte reads split image header safely",[]{check();routes[binaryUrl].chunk=17;install(true);});
  test("GitHub HTTPS asset redirect",[]{check();auto& r=routes[binaryUrl];r.status=302;r.redirect="https://release-assets.githubusercontent.com/fixture.bin";routes[r.redirect].body=imageBody;install(true);});
  test("same semantic version is not offered",[]{strncpy(current.version,tag.c_str(),31);check(false);});
