@@ -16,6 +16,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <cstdio>
+#include <cstdlib>
+#include <sys/time.h>
 #include <cstring>
 #include <string>
 #include "core_bench.inc"
@@ -54,7 +56,7 @@ static void sentinel(bool write){
 }
 static void renderTest(){
  static bool initialized=false;static Preferences preferences;static GameEngine engine;
- if(!initialized){preferences=defaults();load(preferences);displayInitLvgl();uiInit();initialized=true;}
+ if(!initialized){load(preferences);displayInitLvgl();uiInit();initialized=true;}
  UiModel model;model.prefs=&preferences;model.engine=&engine;model.power=PowerPhase::Play;
  model.battery={3970,78,true,false};model.now=1000;int frames=0;
  for(int game=0;game<GameCount;game++){
@@ -76,7 +78,7 @@ extern "C" void app_main(){
  // Only this isolated diagnostic image is confirmed without display/ADC checks.
  auto valid=esp_ota_mark_app_valid_cancel_rollback();printf("BENCH|DIAGNOSTIC_IMAGE|confirm=%s\n",esp_err_to_name(valid));
  networkInit();esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifiEvent,nullptr);
- status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT LEGACY CHECK INSTALL CANCEL CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
+ status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT LEGACY CHECK INSTALL CANCEL TIME CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
  std::string line;
  while(true){
   int c=getchar();
@@ -92,6 +94,7 @@ extern "C" void app_main(){
   }
   else if(command=="CONNECT"){networkConnect(Ssid,"");printf("BENCH|CONNECT|START|ssid=%s|password=EMPTY\n",Ssid);}
   else if(command=="LEGACY"){networkStop();auto e=esp_wifi_set_protocol(WIFI_IF_STA,WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N);printf("BENCH|LEGACY_WIFI|%s\n",esp_err_to_name(e));networkConnect(Ssid,"");esp_wifi_set_ps(WIFI_PS_NONE);}
+  else if(command.rfind("TIME ",0)==0){timeval value{};value.tv_sec=strtoll(command.c_str()+5,nullptr,10);auto err=value.tv_sec>1700000000?settimeofday(&value,nullptr):-1;printf("BENCH|HOST_TIME|epoch=%lld|result=%d\n",(long long)value.tv_sec,err);}
   else if(command=="CHECK"){otaCheck();printf("BENCH|CHECK|START\n");}
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}
   else if(command=="CANCEL"){otaCancel();printf("BENCH|CANCEL|REQUESTED\n");}
