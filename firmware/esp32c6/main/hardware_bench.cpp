@@ -87,6 +87,31 @@ static void probe(){
   esp_http_client_close(h);esp_http_client_cleanup(h);
  }
 }
+static std::string portalCookie;
+static esp_err_t portalEvent(esp_http_client_event_t* e){
+ if(e->event_id==HTTP_EVENT_ON_HEADER&&e->header_key&&e->header_value){
+  if(!strcasecmp(e->header_key,"Location"))printf("BENCH|PORTAL_REDIRECT|%.300s\n",e->header_value);
+  if(!strcasecmp(e->header_key,"Set-Cookie")){std::string v=e->header_value;v=v.substr(0,v.find(';'));if(!portalCookie.empty())portalCookie+="; ";portalCookie+=v;}
+ }
+ return ESP_OK;
+}
+static void portalPage(const std::string& path,const std::string& form=""){
+ std::string url="http://icpaser.net"+path;
+ esp_http_client_config_t c{};c.url=url.c_str();c.timeout_ms=10000;c.buffer_size=1024;c.event_handler=portalEvent;c.disable_auto_redirect=true;
+ auto h=esp_http_client_init(&c);if(!h){printf("BENCH|PORTAL|ALLOC_FAILED\n");return;}
+ esp_http_client_set_header(h,"User-Agent","Remora-ESP32C6");
+ if(!portalCookie.empty())esp_http_client_set_header(h,"Cookie",portalCookie.c_str());
+ if(!form.empty()){esp_http_client_set_method(h,HTTP_METHOD_POST);esp_http_client_set_header(h,"Content-Type","application/x-www-form-urlencoded");}
+ auto e=esp_http_client_open(h,form.size());
+ if(e==ESP_OK&&!form.empty()){int written=esp_http_client_write(h,form.data(),form.size());if(written!=int(form.size()))e=ESP_FAIL;}
+ auto length=e==ESP_OK?esp_http_client_fetch_headers(h):-1;int code=e==ESP_OK?esp_http_client_get_status_code(h):0;
+ printf("BENCH|PORTAL|path=%s|method=%s|open=%s|headers=%lld|status=%d\n",path.c_str(),form.empty()?"GET":"POST",esp_err_to_name(e),(long long)length,code);
+ std::string body;char buffer[513];int n;
+ if(e==ESP_OK)while(body.size()<24576&&(n=esp_http_client_read(h,buffer,512))>0)body.append(buffer,n);
+ esp_http_client_close(h);esp_http_client_cleanup(h);
+ printf("BENCH|PORTAL_BODY_BEGIN\n%s\nBENCH|PORTAL_BODY_END|bytes=%u\n",body.c_str(),unsigned(body.size()));
+}
+
 extern "C" void app_main(){
  setvbuf(stdout,nullptr,_IONBF,0);setvbuf(stdin,nullptr,_IONBF,0);
  auto n=nvs_flash_init();auto u=nvs_flash_init_partition("userdata");
@@ -101,7 +126,7 @@ extern "C" void app_main(){
   int c=getchar();
   if(c==EOF){clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));continue;}
   if(c=='\r')continue;
-  if(c!='\n'){if(line.size()<80)line+=char(c);continue;}
+  if(c!='\n'){if(line.size()<4096)line+=char(c);continue;}
   auto command=line;line.clear();
   if(command=="STATUS")status();
   else if(command=="SCAN"){networkScan();printf("BENCH|SCAN|START\n");}
@@ -112,6 +137,9 @@ extern "C" void app_main(){
   else if(command=="CONNECT"){networkConnect(Ssid,"");printf("BENCH|CONNECT|START|ssid=%s|password=EMPTY\n",Ssid);}
   else if(command=="LEGACY"){networkStop();auto e=esp_wifi_set_protocol(WIFI_IF_STA,WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N);printf("BENCH|LEGACY_WIFI|%s\n",esp_err_to_name(e));networkConnect(Ssid,"");esp_wifi_set_ps(WIFI_PS_NONE);}
   else if(command.rfind("TIME ",0)==0){timeval value{};value.tv_sec=strtoll(command.c_str()+5,nullptr,10);auto err=value.tv_sec>1700000000?settimeofday(&value,nullptr):-1;printf("BENCH|HOST_TIME|epoch=%lld|result=%d\n",(long long)value.tv_sec,err);}
+  else if(command=="PORTAL")portalPage("/login");
+  else if(command.rfind("PAGE /",0)==0)portalPage(command.substr(5));
+  else if(command.rfind("LOGIN ",0)==0)portalPage("/login",command.substr(6));
   else if(command=="PROBE")probe();
   else if(command=="CHECK"){otaCheck();printf("BENCH|CHECK|START\n");}
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}
