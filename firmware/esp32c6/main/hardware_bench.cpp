@@ -11,6 +11,8 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
+#include "esp_http_client.h"
+#include "esp_crt_bundle.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
@@ -70,6 +72,21 @@ static void renderTest(){
  }
  printf("BENCH|UI|PASS|frames=%d|framebuffer=153600|draw_buffers=20480|lcd_connected=0|heap=%lu\n",frames,(unsigned long)esp_get_free_heap_size());
 }
+static esp_err_t probeEvent(esp_http_client_event_t* e){
+ if(e->event_id==HTTP_EVENT_ON_HEADER&&e->header_key&&e->header_value&&strcasecmp(e->header_key,"Location")==0)
+  printf("BENCH|PROBE_REDIRECT|%.220s\n",e->header_value);
+ return ESP_OK;
+}
+static void probe(){
+ for(const char* url:{"http://connectivitycheck.gstatic.com/generate_204","https://example.com","https://api.github.com/repos/ibnusina339/Remora/releases/latest"}){
+  esp_http_client_config_t c{};c.url=url;c.timeout_ms=8000;c.buffer_size=1024;c.crt_bundle_attach=esp_crt_bundle_attach;c.event_handler=probeEvent;
+  auto h=esp_http_client_init(&c);if(!h){printf("BENCH|PROBE|ALLOC_FAILED\n");continue;}
+  esp_http_client_set_header(h,"User-Agent","Remora-ESP32C6");auto e=esp_http_client_open(h,0);
+  auto length=e==ESP_OK?esp_http_client_fetch_headers(h):-1;int code=e==ESP_OK?esp_http_client_get_status_code(h):0;
+  printf("BENCH|PROBE|url=%s|open=%s|headers=%lld|status=%d\n",url,esp_err_to_name(e),(long long)length,code);
+  esp_http_client_close(h);esp_http_client_cleanup(h);
+ }
+}
 extern "C" void app_main(){
  setvbuf(stdout,nullptr,_IONBF,0);setvbuf(stdin,nullptr,_IONBF,0);
  auto n=nvs_flash_init();auto u=nvs_flash_init_partition("userdata");
@@ -78,7 +95,7 @@ extern "C" void app_main(){
  // Only this isolated diagnostic image is confirmed without display/ADC checks.
  auto valid=esp_ota_mark_app_valid_cancel_rollback();printf("BENCH|DIAGNOSTIC_IMAGE|confirm=%s\n",esp_err_to_name(valid));
  networkInit();esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifiEvent,nullptr);
- status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT LEGACY CHECK INSTALL CANCEL TIME CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
+ status();printf("BENCH|READY|STATUS SCAN SCANRESULT CONNECT LEGACY CHECK INSTALL CANCEL TIME PROBE CORE UI NVSSET NVSVERIFY ARM REBOOT\n");
  std::string line;
  while(true){
   int c=getchar();
@@ -95,6 +112,7 @@ extern "C" void app_main(){
   else if(command=="CONNECT"){networkConnect(Ssid,"");printf("BENCH|CONNECT|START|ssid=%s|password=EMPTY\n",Ssid);}
   else if(command=="LEGACY"){networkStop();auto e=esp_wifi_set_protocol(WIFI_IF_STA,WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N);printf("BENCH|LEGACY_WIFI|%s\n",esp_err_to_name(e));networkConnect(Ssid,"");esp_wifi_set_ps(WIFI_PS_NONE);}
   else if(command.rfind("TIME ",0)==0){timeval value{};value.tv_sec=strtoll(command.c_str()+5,nullptr,10);auto err=value.tv_sec>1700000000?settimeofday(&value,nullptr):-1;printf("BENCH|HOST_TIME|epoch=%lld|result=%d\n",(long long)value.tv_sec,err);}
+  else if(command=="PROBE")probe();
   else if(command=="CHECK"){otaCheck();printf("BENCH|CHECK|START\n");}
   else if(command=="INSTALL"){otaInstall();printf("BENCH|INSTALL|START\n");}
   else if(command=="CANCEL"){otaCancel();printf("BENCH|CANCEL|REQUESTED\n");}
