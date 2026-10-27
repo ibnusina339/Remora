@@ -44,7 +44,7 @@ Hasil baca ulang `ota-slot1-v040-readback.bin` berukuran **1.792.192 byte** memi
 a2a4c91ee90d89526dfd2280ed3c1aac170a05681bbbc652e283eb32b02d2cb0
 ```
 
-Keberhasilan transfer ini **belum berarti aplikasi produksi stabil**. Boot v0.4.0 memicu task watchdog dengan CPU berada pada `esp_timer`. Analisis audio menemukan `ledc_set_duty` lama memerlukan sekitar **160 µs**, melebihi periode callback audio **125 µs**. Perbaikannya masih dikerjakan saat laporan ini diperbarui.
+Keberhasilan transfer ini **belum berarti aplikasi produksi stabil**. Boot v0.4.0 memicu task watchdog dengan CPU berada pada `esp_timer`. Analisis audio menemukan `ledc_set_duty` lama memerlukan sekitar **160 µs**, melebihi periode callback audio **125 µs**. Perbaikan runtime dan hasil uji diagnostiknya dicatat di bagian v0.4.1 di bawah.
 
 Setelah reset normal, diagnostik melaporkan `ota_0` VALID (2), `ota_1` ABORTED (4), dan verifikasi sentinel `userdata` ESP_OK. Ini merupakan bukti rollback bootloader dan retensi sentinel melalui percobaan OTA yang gagal boot. Pengujian seluruh profil/rekor, boot stabil kandidat perbaikan, dan gangguan daya tetap belum selesai.
 
@@ -76,3 +76,15 @@ Regresi OTA menjalankan sumber updater produksi dengan I/O ESP-IDF terkontrol: *
 Tambahan gameplay v0.4.0 diuji dengan solver 1.200 peta, pemeriksaan gerbang/scan, expiry bonus Snake, cooldown bonus Pong, render ukuran LCD, dan suite regresi. Hasil build/release dicatat di GitHub Actions.
 
 LCD fisik, warna panel, kelancaran SPI/FPS, tombol fisik, ADC baterai, charger, audio, motor, dan deep sleep rangkaian lengkap belum diuji karena periferal belum dipasang.
+
+## Uji perbaikan audio dan hemat Wi-Fi v0.4.1
+
+Sumber runtime perbaikan berhasil dibangun dengan ESP-IDF 5.5.2. Pada diagnostik COM13, framebuffer dan draw buffer tetap dialokasikan, radio aktif, lalu audio BGM/PCM/SFX dijalankan 12 detik dan diikuti dua detik senyap. Hasil: **120/120 pemeriksaan clock aktif**, waktu **14.000 ms**, tidak ada watchdog, dan clock sampel berhenti saat senyap. Tidak ada speaker terpasang; ini bukan penilaian kualitas bunyi atau pengukuran waveform.
+
+Radio kemudian diuji tanpa aktivitas: dari keadaan aktif menjadi mati pada **30.001 ms**. `NVSVERIFY` kembali **ESP_OK**. Kebijakan produksi memakai 30 detik di luar menu jaringan, 120 detik tanpa aktivitas pada menu jaringan, dan 300 detik pada setup ponsel. Scan, koneksi yang masih berlangsung, serta OTA dilindungi; mulai game dan standby/mati mematikan radio segera. Setup HTTP dan input jaringan mengulang timer. Pengurangan arus boost belum diukur.
+
+Pada percobaan jaringan paling akhir, lima upaya koneksi tidak menemukan SSID sekolah (reason 201). Scan memakai runtime baru maupun image diagnostik lama yang sebelumnya berhasil sama-sama tidak melihat SSID tersebut. Karena itu RSSI −60 dBm di atas adalah pembacaan koneksi sebelumnya, bukan sinyal saat ini. Pemeriksaan ini tidak memastikan penyebab perubahan penerimaan radio. **Instalasi OTA fisik v0.4.1 sampai boot produksi belum dibuktikan**; jaringan sekolah perlu terlihat kembali dan periferal/baterai perlu dipasang untuk pemeriksaan kesehatan boot.
+
+Regresi komputer terbaru menjalankan **71 skenario OTA (0 gagal)** dan **11 skenario lifecycle Wi-Fi (0 gagal)** pada sumber produksi, termasuk pembatalan koneksi tertunda, callback scan setelah stop, dan perlindungan operasi aktif. [Build dan hasil tes](https://github.com/ibnusina339/Remora/actions/runs/40486216138). Suite audio terpisah juga disertakan pada CI untuk memeriksa mute, idle-low, clock tunggal, dan callback sesudah stop.
+
+Bukti lokal tambahan: `runtime-idle-audio.log`, `old-radio-scan.log`, dan `flash-runtime-bench.log`. Tidak ada log autentikasi atau backup privat yang dipublikasikan.

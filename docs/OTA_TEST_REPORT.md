@@ -11,11 +11,11 @@ Board COM13 diuji tanpa LCD atau periferal. Login portal Wi-Fi **MAN Insan Cende
 | Periksa versi dari GitHub | **3/3** pemeriksaan berulang berhasil, dengan framebuffer dan draw buffer masih dialokasikan. Versi publik v0.4.0 ditawarkan sebagai `Ready to update to 0.4.0 version`. |
 | Unduh dan tulis binary | Selesai **100%**, **1.792.192 byte** ditulis ke slot aplikasi nonaktif dan dipilih untuk boot. |
 | Verifikasi isi slot | Readback slot OTA cocok dengan SHA-256 firmware publik v0.4.0: `a2a4c91ee90d89526dfd2280ed3c1aac170a05681bbbc652e283eb32b02d2cb0`. |
-| Boot aplikasi produksi | **Belum lulus.** v0.4.0 memicu watchdog pada task `esp_timer`. Analisis callback audio menemukan `ledc_set_duty` lama sekitar 160 µs, melebihi periode audio 125 µs. Perbaikan masih berlangsung. |
+| Boot aplikasi produksi | **Belum lulus.** v0.4.0 memicu watchdog pada task `esp_timer`. Analisis callback audio menemukan `ledc_set_duty` lama sekitar 160 µs, melebihi periode audio 125 µs. Perbaikan runtime lulus tes diagnostik terpisah; lihat bagian v0.4.1 di bawah. |
 | Rollback | Setelah reset normal, bootloader kembali ke diagnostik `ota_0` VALID (2); image `ota_1` ditandai ABORTED (4). |
 | Persistensi | Sentinel `userdata` tetap lulus `NVSVERIFY` sesudah percobaan OTA dan rollback. Ini belum membuktikan semua profil/rekor pada aplikasi produksi yang stabil. |
 
-**Kesimpulan sementara:** jaringan, pemeriksaan versi, transfer firmware, penulisan flash, kecocokan binary, dan rollback telah dibuktikan. Boot produksi yang stabil serta kelulusan akhir kandidat v0.4.1 masih menunggu perbaikan dan pengujian ulang. Board saat laporan diperbarui menjalankan **image diagnostik 0.2.0**, bukan isi flash awal.
+**Kesimpulan sementara:** jaringan, pemeriksaan versi, transfer firmware, penulisan flash, kecocokan binary, dan rollback telah dibuktikan. Boot produksi yang stabil serta kelulusan akhir kandidat v0.4.1 masih memerlukan pengujian ulang sampai boot produksi pada rangkaian lengkap. Board saat laporan diperbarui menjalankan **image diagnostik 0.2.0**, bukan isi flash awal.
 
 RSSI langsung terakhir **−60 dBm**, kanal **6**, bandwidth **20 MHz**. Bitrate PHY TX/RX terpisah belum diukur; API STA publik ESP-IDF 5.5.2 menyediakan RSSI/mode PHY/bandwidth, tanpa getter kecepatan TX/RX saat ini secara terpisah. Angka kapasitas maksimum atau throughput tidak dilaporkan sebagai penggantinya. Referensi: [API Wi-Fi resmi ESP-IDF 5.5.2](https://github.com/espressif/esp-idf/blob/v5.5.2/components/esp_wifi/include/esp_wifi.h).
 
@@ -59,3 +59,15 @@ Pengujian yang masih diperlukan: boot stabil kandidat perbaikan sampai image dik
 ## Catatan pemulihan board
 
 Pemulihan pertama flash awal 4 MB memiliki readback yang identik. Pada pemulihan kedua, penulisan dan pemeriksaan hash alat flash berhasil, tetapi readback penuh macet; tidak ada klaim kesamaan byte demi byte untuk pemulihan kedua. Pengujian berikutnya kembali memasang diagnostik, dan rollback terakhir kembali ke diagnostik 0.2.0.
+
+## Uji perbaikan audio dan hemat Wi-Fi v0.4.1
+
+Sumber runtime perbaikan berhasil dibangun dengan ESP-IDF 5.5.2. Pada diagnostik COM13, framebuffer dan draw buffer tetap dialokasikan, radio aktif, lalu audio BGM/PCM/SFX dijalankan 12 detik dan diikuti dua detik senyap. Hasil: **120/120 pemeriksaan clock aktif**, waktu **14.000 ms**, tidak ada watchdog, dan clock sampel berhenti saat senyap. Tidak ada speaker terpasang; ini bukan penilaian kualitas bunyi atau pengukuran waveform.
+
+Radio kemudian diuji tanpa aktivitas: dari keadaan aktif menjadi mati pada **30.001 ms**. `NVSVERIFY` kembali **ESP_OK**. Kebijakan produksi memakai 30 detik di luar menu jaringan, 120 detik tanpa aktivitas pada menu jaringan, dan 300 detik pada setup ponsel. Scan, koneksi yang masih berlangsung, serta OTA dilindungi; mulai game dan standby/mati mematikan radio segera. Setup HTTP dan input jaringan mengulang timer. Pengurangan arus boost belum diukur.
+
+Pada percobaan jaringan paling akhir, lima upaya koneksi tidak menemukan SSID sekolah (reason 201). Scan memakai runtime baru maupun image diagnostik lama yang sebelumnya berhasil sama-sama tidak melihat SSID tersebut. Karena itu RSSI −60 dBm di atas adalah pembacaan koneksi sebelumnya, bukan sinyal saat ini. Pemeriksaan ini tidak memastikan penyebab perubahan penerimaan radio. **Instalasi OTA fisik v0.4.1 sampai boot produksi belum dibuktikan**; jaringan sekolah perlu terlihat kembali dan periferal/baterai perlu dipasang untuk pemeriksaan kesehatan boot.
+
+Regresi komputer terbaru menjalankan **71 skenario OTA (0 gagal)** dan **11 skenario lifecycle Wi-Fi (0 gagal)** pada sumber produksi, termasuk pembatalan koneksi tertunda, callback scan setelah stop, dan perlindungan operasi aktif. [Build dan hasil tes](https://github.com/ibnusina339/Remora/actions/runs/40486216138). Suite audio terpisah juga disertakan pada CI untuk memeriksa mute, idle-low, clock tunggal, dan callback sesudah stop.
+
+Bukti lokal tambahan: `runtime-idle-audio.log`, `old-radio-scan.log`, dan `flash-runtime-bench.log`. Tidak ada log autentikasi atau backup privat yang dipublikasikan.

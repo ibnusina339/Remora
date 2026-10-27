@@ -24,6 +24,10 @@ jobs:
             -I tests/network_host/stubs -I firmware/esp32c6/components/remora_core/include \
             tests/network_host/network_test.cpp -pthread -o /tmp/remora-network-test
           /tmp/remora-network-test
+      - name: Test audio runtime lifecycle
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I tests/audio_host/stubs tests/audio_host/audio_test.cpp -o /tmp/remora-audio-test
+          /tmp/remora-audio-test
   firmware:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.2
